@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "buffer": "^6.0.3",
     "expo": "~57.0.20",
+    "expo-audio": "~57.0.4",
+    "expo-file-system": "~57.0.6",
+    "expo-secure-store": "^57.0.3",
     "expo-status-bar": "~57.0.1",
+    "js-sha1": "^0.7.0",
     "react": "19.2.3",
     "react-native": "0.86.3"
   },
@@ -14,6 +19,9 @@
   },
   "scripts": {
     "start": "expo start",
+    "selftest": "node --experimental-strip-types scripts/token-selftest.mjs",
+    "seed": "node --experimental-strip-types scripts/seed-students.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"

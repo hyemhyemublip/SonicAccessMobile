@@ -1,0 +1,119 @@
+{
+  "$comment": "SAMPLE DATA — not for production. Regenerate with `npm run seed -- --force`.",
+  "generatedAt": "2026-09-06T19:08:31.500Z",
+  "protocol": {
+    "timeStepMs": 15000,
+    "payloadBits": 44,
+    "hotp": "HMAC-SHA1 / RFC 4226 dynamic truncation, key = secret as raw UTF-8"
+  },
+  "students": [
+    {
+      "studentId": 231800,
+      "name": "Jumuad, Samantha Queen C.",
+      "program": "BSIT",
+      "section": "SBIT4K",
+      "status": "active",
+      "secret": "SZCGVTXAKJWPLFZ5WN6SEGG72R7O7OVQ",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231801,
+      "name": "Reyes, John Kenny Q.",
+      "program": "BSIT",
+      "section": "SBIT4K",
+      "status": "active",
+      "secret": "45JEXXJCYOGXHAQKHV7SA5ESKLGKTDLO",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231802,
+      "name": "Añonuevo, Jhon Andrew",
+      "program": "BSIT",
+      "section": "SBIT4K",
+      "status": "active",
+      "secret": "TOXSK73DZQ77WKZOZDG5ZEVJUQIBSP4A",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231803,
+      "name": "Dela Cruz, Juan Carlo",
+      "program": "BSIT",
+      "section": "SBIT4K",
+      "status": "active",
+      "secret": "HNAQU3K3JPCOU3LYGCMOO74RONKLO7VN",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231804,
+      "name": "Sebial, John Errol",
+      "program": "BSIT",
+      "section": "SBIT4K",
+      "status": "active",
+      "secret": "OJS7XLCDJPDFFVXMBQLWIMSLH7ZAMEDA",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231805,
+      "name": "Alaña, Nicole",
+      "program": "BSIT",
+      "section": "SBIT4L",
+      "status": "active",
+      "secret": "4O3LZ4XDCKL76U4WURQ43XJTRXQZN5QJ",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231806,
+      "name": "Añonuevo, Balili Erica Mea",
+      "program": "BSIT",
+      "section": "SBIT4L",
+      "status": "active",
+      "secret": "XT2QZADNETL2E6S3TD2IXY6N57QQFS6X",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231807,
+      "name": "Belardo, Iris Angelo A.",
+      "program": "BSIT",
+      "section": "SBIT4L",
+      "status": "active",
+      "secret": "VWTFHUHXKBGSQMWA5UBJKFFN7IQZVGS3",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231808,
+      "name": "Comawas, Rj",
+      "program": "BSIT",
+      "section": "SBIT4L",
+      "status": "active",
+      "secret": "HCD26XEXQPMGLGJFGQDWCRYXR6QPOR5W",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231809,
+      "name": "Magpantay, Zyrill",
+      "program": "BSIT",
+      "section": "SBIT4M",
+      "status": "active",
+      "secret": "MGWBG2OYSNZMYMPHDSNMIK4MUJI7CFPM",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231810,
+      "name": "Suico, Wiljohn",
+      "program": "BSIT",
+      "section": "SBIT4M",
+      "status": "active",
+      "secret": "DYD3WBFAO24JQR2MYKSTPSA2YHQKWKOQ",
+      "deviceEnrolled": false
+    },
+    {
+      "studentId": 231811,
+      "name": "Santos, Maria Clara",
+      "program": "BSIT",
+      "section": "SBIT4M",
+      "status": "active",
+      "secret": "3B5QMLAG6RUR7N3PBTZ4TVAMFV2LGYRZ",
+      "deviceEnrolled": false
+    }
+  ]
+}
