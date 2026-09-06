@@ -20,8 +20,11 @@
   "scripts": {
     "start": "expo start",
     "selftest": "node --experimental-strip-types scripts/token-selftest.mjs",
+    "test:audio": "node --experimental-strip-types scripts/roundtrip-test.mjs",
+    "decode": "node --experimental-strip-types scripts/fsk-decoder.mjs",
     "seed": "node --experimental-strip-types scripts/seed-students.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run typecheck && npm run selftest && npm run test:audio",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"

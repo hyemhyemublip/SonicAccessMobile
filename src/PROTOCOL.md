@@ -107,3 +107,18 @@ Total on-air time ≈ `(8 + 1 + 48) * 20 ms` = 1.14 s plus 80 ms silence.
 A captured chirp is only replayable within the current 15 s window ± 1 step
 (≤ 45 s). The gate SHOULD additionally cache accepted `(studentId, counter)`
 pairs for ~60 s and reject a second use of the same pair.
+
+## 6. Status
+
+**Frozen for firmware implementation** — the payload layout (§3), the HOTP
+parameters (§2), CRC-8, and the frame structure (§4) will not change.
+
+**Provisional** — the four FSK frequencies (`f0`, `f1`, `fPreamble`) and
+`symbolMs` in §4. These get retuned against the actual pilot speaker/mic; when
+they change, this file and `DEFAULT_CHIRP` in `src/utils/audioSynthesizer.ts`
+change together. Write the firmware to read them from config, not hard-code.
+
+A working software implementation of this spec — parser, preamble lock,
+per-symbol tone decision, CRC, verify — is `scripts/fsk-decoder.mjs`
+(`decodeWav`). Match its behaviour; `npm run test:audio` is the conformance
+check (offset / noise / low-amplitude / silence-rejection / tamper cases).

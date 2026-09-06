@@ -16,7 +16,11 @@
  */
 
 import { Buffer } from 'buffer';
-import { File, Paths } from 'expo-file-system';
+
+// `expo-file-system` is loaded lazily (dynamic import) so the pure parts of this
+// module — `buildWaveform`, `encodeWav` — can be imported from plain Node (the
+// reference decoder and round-trip test do this). Only `synthesizeChirp` and
+// `cleanupChirps` touch the filesystem, and only on-device.
 
 export interface ChirpConfig {
   sampleRate: number; // Hz
@@ -128,7 +132,8 @@ export function buildWaveform(
 /* WAV container                                                             */
 /* -------------------------------------------------------------------------- */
 
-function encodeWav(samples: number[], sampleRate: number): Uint8Array {
+/** Wrap a float waveform (-1..1) in a 16-bit mono PCM WAV container. */
+export function encodeWav(samples: number[], sampleRate: number): Uint8Array {
   const bytesPerSample = 2;
   const dataSize = samples.length * bytesPerSample;
   const buf = new Uint8Array(44 + dataSize);
@@ -177,6 +182,7 @@ export async function synthesizeChirp(
   bits: number[],
   cfg: ChirpConfig = DEFAULT_CHIRP,
 ): Promise<Chirp> {
+  const { File, Paths } = await import('expo-file-system');
   const { samples, symbolCount } = buildWaveform(bits, cfg);
   const wav = encodeWav(samples, cfg.sampleRate);
   const base64 = Buffer.from(wav).toString('base64');
@@ -193,19 +199,25 @@ export async function synthesizeChirp(
   };
 }
 
-/** Delete cached chirp WAVs from previous emissions. Best-effort. */
+/** Delete cached chirp WAVs from previous emissions. Best-effort, fire-and-forget. */
 export function cleanupChirps(): void {
-  try {
-    for (const entry of Paths.cache.list()) {
-      if (entry instanceof File && entry.name.startsWith(CHIRP_PREFIX)) {
-        try {
-          entry.delete();
-        } catch {
-          // ignore a single stubborn file
+  import('expo-file-system')
+    .then(({ File, Paths }) => {
+      try {
+        for (const entry of Paths.cache.list()) {
+          if (entry instanceof File && entry.name.startsWith(CHIRP_PREFIX)) {
+            try {
+              entry.delete();
+            } catch {
+              // ignore a single stubborn file
+            }
+          }
         }
+      } catch {
+        // cache listing unavailable — nothing to clean
       }
-    }
-  } catch {
-    // cache listing unavailable — nothing to clean
-  }
+    })
+    .catch(() => {
+      // module unavailable (e.g. running under plain Node) — nothing to clean
+    });
 }

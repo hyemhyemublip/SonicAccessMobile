@@ -11,10 +11,17 @@ Binary FSK modulator: bit payload → ultrasonic WAV.
   and writes it to the cache dir (`expo-file-system`). The `uri` goes straight
   to `createAudioPlayer`.
 - `buildWaveform(bits, cfg?)` → `{ samples, symbolCount }` — the float waveform
-  only, no file I/O. Handy for tests / visualisation.
+  only, no file I/O.
+- `encodeWav(samples, sampleRate)` → `Uint8Array` — 16-bit mono PCM WAV bytes.
 - `cleanupChirps()` — deletes `sonic-chirp-*.wav` left in the cache.
 - `DEFAULT_CHIRP` — the tunable config (frequencies, symbol length, preamble,
   ramp, silence padding).
+
+`buildWaveform` / `encodeWav` / `DEFAULT_CHIRP` are pure and import cleanly into
+plain Node — the reference decoder and `npm run test:audio` use them.
+`expo-file-system` is loaded lazily, only inside `synthesizeChirp` /
+`cleanupChirps`, so importing this module off-device does not pull native code.
+The matching decoder is `scripts/fsk-decoder.mjs`.
 
 ### Frame
 

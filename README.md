@@ -63,8 +63,11 @@ and loading the app on a phone (plus the web preview).
 
 ```bash
 npm start            # expo dev server (use a physical device — needs a speaker)
+npm test             # typecheck + token self-test + FSK round-trip test
 npm run typecheck    # tsc --noEmit
 npm run selftest     # crypto / token self-test (RFC 4226 vectors)
+npm run test:audio   # token -> WAV -> reference decoder -> verify (noise/offset)
+npm run decode -- rec.wav [secret]   # decode a WAV with the reference decoder
 npm run seed         # (re)generate seed/students.json
 ```
 
