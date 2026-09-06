@@ -52,10 +52,12 @@ and loading the app on a phone (plus the web preview).
 | ----------------- | ---------------------------------------------------------- |
 | `App.tsx`         | Mounts `GatePassScreen`.                                   |
 | `RUNNING.md`      | Step-by-step run guide (Expo Go, dev server, on-device).   |
+| `BACKEND.md`      | Backend design overview (data model, flows, security).     |
 | `CONSIDERATIONS.md` | Open decisions before production: offline, clock drift, provisioning, security, audio tuning. |
 | `src/`            | All application code — see `src/README.md`.                |
 | `src/PROTOCOL.md` | The wire contract shared with the gate-node firmware.      |
-| `scripts/`        | Node self-tests and the student roster seed generator.     |
+| `scripts/`        | Node self-tests, FSK reference decoder, roster seed generator. |
+| `server/`         | Phase 1 backend — registry, secret pull, event ingest, occupancy (own README). |
 | `seed/`           | Sample student roster (registrar / gate fixture).          |
 | `assets/`         | App icons and splash.                                      |
 

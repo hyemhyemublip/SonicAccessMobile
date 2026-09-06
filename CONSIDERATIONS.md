@@ -52,23 +52,29 @@ Two ESP32 receivers, identical firmware, configured per-unit with `direction`
 (`in` / `out`) and `gateId`. No mesh, no TDOA, no triangulation.
 
 - The phone emits the same chirp at either node; it never signals direction.
-- **Secret map delivery — DECIDED: local admin endpoint.** Each node exposes a
-  small admin API on the campus LAN; the backend (or an operator tool) pushes
-  the current `studentId → secret` map and revocations to it. Node caches the
-  map locally so it keeps verifying if the endpoint is unreachable. Open: auth
-  on that endpoint, push vs pull, full-map vs delta.
-- `seed/students.json` is the fixture shape for that map during development.
+- **Secret map delivery — BUILT as PULL** (`server/`). The backend serves
+  `GET /nodes/secrets` (bearer `NODE_TOKEN`) returning the full active
+  `studentId → secret` map + a `revoked` list + a `revision` timestamp. Each
+  node polls this on a timer and caches locally, so a node that reboots or
+  briefly loses the LAN just re-fetches — no per-node addressing or retry queue
+  the way a push would need. Push can be layered on later if near-instant
+  revocation matters. Open: delta sync (`If-None-Match` on `revision`), poll
+  interval, node-side cache format.
+- `seed/students.json` is the fixture; `server` `npm run import-seed` loads it.
 
 ## Enrollment / provisioning
 
-Enrollment is manual paste of `studentId` + `secret` today.
+Enrollment is manual paste of `studentId` + `secret` in the app today.
 
-- A registrar-issued provisioning flow (scan a one-time QR, or a call to a
-  backend) would need connectivity **at enrollment only** — offline after. Keep
-  the offline guarantee scoped to normal daily use, not first setup.
-- Secret handling: it currently lives in `expo-secure-store` (OS keychain).
-  Confirm that's acceptable, and decide on a re-enroll / device-lost path
-  (revoke the secret on the node, re-issue).
+- **Backend side BUILT** (`server/`): `POST /admin/students` (registrar issues a
+  student + secret), `.../rotate` (new secret version), `.../revoke`. The
+  registrar-facing tool/flow that calls these — and how the student then gets
+  the secret onto their phone (one-time QR into the enroll screen?) — is still
+  to design. Whatever it is, it needs connectivity **at enrollment only**;
+  daily use stays offline.
+- Secret handling on the device: `expo-secure-store` (OS keychain). Still to
+  decide: re-enroll / device-lost path (revoke on the backend → nodes drop it
+  on next pull → re-issue).
 
 ## Occupancy / headcount tracking (proposal requirement)
 
@@ -76,20 +82,24 @@ The proposal requires **live campus density / foot-traffic tracking** — a
 running count of people currently inside, in the database, updated in real time.
 
 - **Not a client responsibility.** The phone only emits the chirp. The count is
-  written by the **gate node** (or the backend it posts to) on each accepted
-  verify: entry event → `occupancy += 1`, plus an append-only log row
-  `(studentId, timestamp, direction=in, gateId)`.
+  written by the backend. **BUILT** (`server/`): `POST /ingest/events` appends
+  an `access_events` row `(studentId, gateId, direction, eventTs, counter)` and
+  moves `occupancy` (`in` +1 / `out` −1, floored at 0), idempotent on
+  `gateId|studentId|counter`. `GET /occupancy` serves the live count +
+  today's in/out.
 - **Exit — DECIDED: a separate exit node.** Same firmware as the entry node,
-  configured `direction = out`. On an accepted verify it emits an `out` event →
-  `occupancy -= 1`. Physical placement (which door is "in", which is "out") is
-  an install-time concern; the phone stays dumb.
-- **Reconciliation:** counts drift (tailgating, missed exits, node reboot).
-  Plan a periodic reset (e.g. nightly to 0) and/or a manual correction path.
-- **Offline:** if the node loses its backend link, it must queue entry/exit
-  events locally and flush on reconnect, or the count goes stale. Fits the
-  "gate works offline" goal — the count is eventually-consistent.
-- **Privacy:** store the aggregate count and per-event rows with `studentId`
-  only; no audio, consistent with the no-raw-recording rule.
+  configured `direction = out`. On an accepted verify it POSTs an `out` event.
+  Physical placement (which door is "in", which is "out") is an install-time
+  concern; the phone stays dumb.
+- **Reconciliation — still open.** Counts drift (tailgating, missed exits,
+  reboots). Deferred: a nightly reset job + a manual-correction endpoint
+  (append a correction event, never edit history).
+- **Offline — still open.** If a node loses its backend link it must queue
+  events locally and flush on reconnect (with the `counter` dedupe key making
+  replays safe), or the count goes stale. The count is eventually-consistent by
+  design.
+- **Privacy:** `access_events` stores `studentId` only; no audio. Consistent
+  with the no-raw-recording rule.
 
 Client-side follow-up (small): after a successful emit the app could show
 "you're checked in" once the node can echo an ack — optional, not required for
@@ -136,9 +146,14 @@ the count itself.
   `direction` + `gateId` config. No mesh/TDOA.
 - **Exit mechanism:** the dedicated exit node emits `direction = out` (occupancy
   −1). Phone never signals direction.
-- **Secret map on the node:** pushed over a local admin endpoint on the campus
-  LAN; node caches locally for offline resilience. (Auth / push-vs-pull /
-  delta-vs-full still to spec.)
+- **Secret map on the node:** PULL from the backend (`GET /nodes/secrets`,
+  bearer `NODE_TOKEN`), node caches locally for offline resilience. Built in
+  `server/`. (Delta sync / poll interval still to spec; push can be added later
+  if instant revocation is needed.)
+- **Backend:** Node + Express + SQLite (`node:sqlite`), lives in `server/` of
+  this repo. Core API built: admin/provisioning, node secret pull, event
+  ingest, occupancy read. Deferred: dashboard UI, nightly reset, manual
+  correction.
 - **Node time:** NTP (absolute UTC). Timezone is irrelevant to the rolling-code
   math; only the correct absolute instant matters.
 - **Hardware:** not on hand yet — near-term work is software only (see

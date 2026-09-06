@@ -1,0 +1,20 @@
+{
+  "name": "sonicaccess-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SonicAccess Phase 1 backend — student/secret registry, gate-node secret pull, access-event ingest, live occupancy.",
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node --experimental-sqlite --env-file=.env src/index.mjs",
+    "dev": "node --experimental-sqlite --env-file=.env --watch src/index.mjs",
+    "migrate": "node --experimental-sqlite --env-file=.env scripts/migrate.mjs",
+    "import-seed": "node --experimental-sqlite --env-file=.env scripts/import-seed.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
