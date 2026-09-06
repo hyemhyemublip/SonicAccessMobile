@@ -70,8 +70,13 @@ npm run typecheck    # tsc --noEmit
 npm run selftest     # crypto / token self-test (RFC 4226 vectors)
 npm run test:audio   # token -> WAV -> reference decoder -> verify (noise/offset)
 npm run decode -- rec.wav [secret]   # decode a WAV with the reference decoder
+npm run gate-sim -- --gate-id g --direction in rec.wav   # simulate a gate node
 npm run seed         # (re)generate seed/students.json
 ```
+
+End-to-end with no hardware: run `server/` (backend), then `npm run gate-sim`
+pointed at it, then feed it a WAV recorded from the app — occupancy moves. See
+`scripts/README.md` and `BACKEND.md`.
 
 ## How it works (one paragraph)
 

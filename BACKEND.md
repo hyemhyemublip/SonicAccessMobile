@@ -73,6 +73,14 @@ lastEventAt }`. `GET /occupancy/events?limit=` returns recent rows.
 - Sample secrets in `seed/students.json` are dev-only; production issues fresh
   secrets via `/admin/students` and never commits them.
 
+## Testing without hardware
+
+`scripts/gate-sim.mjs` (`npm run gate-sim`) stands in for the ESP32: it pulls
+the secret map from this backend, decodes a WAV with `scripts/fsk-decoder.mjs`,
+runs the HOTP verify, applies a replay cache, and POSTs to `/ingest/events`.
+Run one instance per direction. Full flow: app records a chirp → `gate-sim`
+decodes it → backend occupancy moves.
+
 ## Not built yet (deferred from this pass)
 
 - Dashboard UI (currently JSON endpoints only)
