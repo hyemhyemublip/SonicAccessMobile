@@ -61,10 +61,18 @@ backend appends the event and moves `occupancy` (`in` +1, `out` −1, floored at
 once and moves the count once. An event for an unknown `studentId` is still
 recorded (`knownStudent:false`); the log is the source of truth.
 
-**Dashboard** — `GET /` serves a static page (no build) that polls
-`/occupancy`, `/nodes`, `/occupancy/events` and shows the live count, today's
-in/out/net, gate-node liveness, and recent events. An optional admin-token field
-enables the adjust / reset controls.
+**Console** — `GET /` serves a static page (no build) for one shared device at
+the gate desk, with three tabs:
+- **Overview · Security** — live count, today in/out/net, node liveness, recent
+  events, operator adjust/reset.
+- **Enrollment · Registrar** — create/update a student (secret auto-generated),
+  then `GET /admin/students/:id/enroll-code` returns the base64 code + a PNG QR
+  data URL, shown on screen for the student to scan or paste. Roster with
+  rotate / revoke.
+- **Discipline · Guidance** — placeholder for SO5 (one-touch violation
+  logging); shows live gate activity for now.
+Tokens are entered once (localStorage). Everything is inline / same-origin —
+works offline on the LAN.
 
 **Corrections** — the count drifts (tailgating, missed exits, reboots).
 `POST /occupancy/adjust {delta}` and `POST /occupancy/reset {to}` (admin) fix it;

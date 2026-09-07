@@ -60,9 +60,12 @@ GET /health            -> { ok, db, rolesConfigured }
 ### Admin  (`ADMIN_TOKEN`)
 ```
 POST /admin/students                     upsert student + set active secret
-     { studentId, name, program?, section?, secret }
+     { studentId, name, program?, section?, secret? }   secret omitted -> generated
 GET  /admin/students        [?withSecrets=1]
 GET  /admin/students/:id    [?withSecret=1]
+GET  /admin/students/:id/enroll-code     -> { studentId, name, code, json, qrDataUrl }
+     `code` is the base64 the student pastes / the QR encodes; `qrDataUrl` is a
+     PNG data URI of that code. 409 if the student has no active secret.
 POST /admin/students/:id/rotate          { secret? }  -> new version (auto-gen if omitted)
 POST /admin/students/:id/revoke          status=revoked, all secrets deactivated
 ```
@@ -108,11 +111,22 @@ Every write is logged to `occupancy_adjustments` (kind `adjust` | `reset`, with
 `prev_count`, `new_count`, `reason`, `role`). `access_events` stays pure gate
 traffic.
 
-### Dashboard
-`GET /` serves `public/index.html` — a static page (no build) that polls
-`/occupancy`, `/nodes`, `/occupancy/events`. It prompts once for `READ_TOKEN`
-(kept in `localStorage`); an optional `ADMIN_TOKEN` field enables the
-adjust / reset controls. The count turns amber if any node is stale.
+### Console (`GET /`)
+`public/index.html` — a static page (no build), meant to run on one shared
+device at the gate desk. Three tabs:
+
+- **Overview · Security** — live occupancy, today in/out/net, gate-node
+  liveness, recent events, operator adjust/reset (admin).
+- **Enrollment · Registrar** — create / update a student (secret auto-generated
+  if left blank), then it shows the **enrollment code + QR** (from
+  `/admin/students/:id/enroll-code`) for the student to scan or paste. Roster
+  with per-student Code / Rotate / Revoke.
+- **Discipline · Guidance** — placeholder for one-touch violation logging
+  (proposal SO5, not built); for now shows live gate activity.
+
+`READ_TOKEN` and (optional) `ADMIN_TOKEN` are entered once and kept in
+`localStorage`. Registrar + operator actions need the admin token. All assets
+are inline / same-origin — works fully offline on the LAN.
 
 ## Nightly reset
 

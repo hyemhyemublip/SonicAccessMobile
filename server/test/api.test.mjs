@@ -91,6 +91,39 @@ test('studentId out of 20-bit range is rejected', async () => {
   assert.equal(r.status, 400);
 });
 
+test('create without a secret auto-generates one', async () => {
+  const j = await (
+    await req('/admin/students', {
+      token: A,
+      method: 'POST',
+      body: { studentId: 500002, name: 'Auto Secret' },
+    })
+  ).json();
+  assert.ok(typeof j.student.secret === 'string' && j.student.secret.length >= 16);
+});
+
+test('enroll-code returns a base64 code + QR data URL', async () => {
+  const j = await (await req('/admin/students/500001/enroll-code', { token: A })).json();
+  assert.equal(j.studentId, 500001);
+  assert.match(j.qrDataUrl, /^data:image\/png;base64,/);
+  // the code decodes to the sync payload with the student's active secret
+  const obj = JSON.parse(Buffer.from(j.code, 'base64').toString('utf8'));
+  assert.equal(obj.t, 'sonicaccess/v1');
+  assert.equal(obj.sid, 500001);
+  assert.equal(obj.sec, 'secret-one-123');
+});
+
+test('enroll-code for a revoked student is 409', async () => {
+  await req('/admin/students', {
+    token: A,
+    method: 'POST',
+    body: { studentId: 500003, name: 'To Revoke' },
+  });
+  await req('/admin/students/500003/revoke', { token: A, method: 'POST', body: {} });
+  const r = await req('/admin/students/500003/enroll-code', { token: A });
+  assert.equal(r.status, 409);
+});
+
 test('nodes/secrets serves the map with an ETag, and 304s on If-None-Match', async () => {
   const r1 = await req('/nodes/secrets', { token: N });
   assert.equal(r1.status, 200);

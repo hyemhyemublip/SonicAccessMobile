@@ -14,11 +14,14 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
   (`decodeWav`, mirrors `src/PROTOCOL.md`), `scripts/roundtrip-test.mjs`
   (`npm run test:audio`) under offset / noise / low-amplitude / tamper.
 - **Backend** (`server/`) — Node + Express + `node:sqlite`. Registry +
-  provisioning (`/admin/students`, rotate, revoke), node secret **pull**
-  (`/nodes/secrets` + ETag/304), event **ingest** (`/ingest/events`, occupancy
-  ±1, idempotent, floored), occupancy read, operator adjust/reset
-  (`occupancy_adjustments` audit), nightly-reset script, static dashboard at
-  `/`, 13 API tests, deploy notes.
+  provisioning (`/admin/students` with auto-generated secret, rotate, revoke,
+  `enroll-code` → base64 + QR), node secret **pull** (`/nodes/secrets` +
+  ETag/304), event **ingest** (`/ingest/events`, occupancy ±1, idempotent,
+  floored), occupancy read, operator adjust/reset (`occupancy_adjustments`
+  audit), nightly-reset script, 16 API tests, deploy notes.
+- **Shared console** (`GET /`) — one static page, three tabs: Overview·Security,
+  Enrollment·Registrar (issue a student → show the QR/code), Discipline·Guidance
+  (placeholder for SO5).
 - **Gate node simulator** — `scripts/gate-sim.mjs` (`npm run gate-sim`): the
   ESP32's job on a laptop. WAV → decode → verify → replay cache → ingest.
 - **End-to-end test** — `scripts/e2e-test.mjs` (`npm run test:e2e`): boots the

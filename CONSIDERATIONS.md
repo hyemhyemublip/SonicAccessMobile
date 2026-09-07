@@ -103,7 +103,9 @@ Client: `src/services/vault.ts`, `authService.ts`, `enrollmentCode.ts`,
   if raw JSON is pasted). The student then sets a password (≥ 8 chars).
   `authService.enroll` wraps the secret and stores `{ studentId, name }` +
   `VaultBlob` in `expo-secure-store`; the code and plaintext secret are dropped.
-  Generate test codes with `npm run enroll-code`.
+  Codes come from `GET /admin/students/:id/enroll-code` (base64 + PNG QR),
+  driven from the console's **Enrollment · Registrar** tab, or `npm run
+  enroll-code` from the CLI.
 - **Unlock**: `UnlockScreen` password → `authService.unlock` → decrypted secret
   handed to `App`, kept **in memory only**. `App` drops it on `AppState`
   background (re-lock). No timed key cache yet — every foreground session types

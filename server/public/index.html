@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SonicAccess — occupancy</title>
+<title>SonicAccess — console</title>
 <style>
   /* Quezon City University palette: blue / white / red / gold */
   :root {
@@ -14,36 +14,32 @@
     --paper: #F4F6FB; --ink: #141B2D; --mute: #5A6478; --faint: #8A93A6; --line: #DDE3EE;
   }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    background: var(--paper); color: var(--ink); padding: 0 0 40px;
-  }
-  .bar {
-    background: var(--blue); color: #fff; padding: 14px 24px;
-    display: flex; align-items: baseline; gap: 12px;
-  }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--paper); color: var(--ink); padding: 0 0 48px; }
+  .bar { background: var(--blue); color: #fff; padding: 14px 24px; }
   .bar .mark { font-weight: 800; font-size: 18px; letter-spacing: .3px; }
   .bar .mark span { color: var(--gold); }
-  .bar .tag { color: #C9D6EE; font-size: 12.5px; font-weight: 600; letter-spacing: .4px; }
-  .wrap { max-width: 940px; margin: 0 auto; padding: 24px; }
-  h1 { font-size: 18px; margin: 0 0 2px; font-weight: 700; }
-  .sub { color: var(--mute); font-size: 13px; margin-bottom: 18px; }
-  .count {
-    font-size: 92px; font-weight: 800; line-height: 1; letter-spacing: 1px; color: var(--blue);
-  }
+  .bar .tag { color: #C9D6EE; font-size: 12.5px; font-weight: 600; margin-left: 10px; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 22px 24px; }
+
+  .tabs { display: flex; gap: 6px; border-bottom: 2px solid var(--line); margin-bottom: 22px; }
+  .tabs button { background: none; border: 0; padding: 10px 16px; font-weight: 700; color: var(--mute);
+    cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tabs button.active { color: var(--blue); border-bottom-color: var(--gold); }
+  .panel { display: none; } .panel.active { display: block; }
+
+  h1 { font-size: 17px; margin: 0 0 2px; font-weight: 700; }
+  .sub { color: var(--mute); font-size: 13px; margin-bottom: 16px; }
+  .count { font-size: 88px; font-weight: 800; line-height: 1; color: var(--blue); }
   .count.stale { color: var(--red); }
-  .today { color: var(--mute); margin: 10px 0 26px; font-size: 14px; }
+  .today { color: var(--mute); margin: 8px 0 24px; font-size: 14px; }
   .today b { color: var(--ink); }
-  .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  .grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
   @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
-  .card {
-    background: #fff; border-radius: 14px; padding: 18px;
-    border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(11,27,58,.06);
-  }
-  .card h2 {
-    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--blue); margin: 0 0 12px; font-weight: 700;
-  }
+  .card { background: #fff; border-radius: 14px; padding: 18px; border: 1px solid var(--line);
+    box-shadow: 0 6px 18px rgba(11,27,58,.06); }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--blue);
+    margin: 0 0 12px; font-weight: 700; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
   th { color: var(--faint); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .5px; }
@@ -51,19 +47,24 @@
   .badge { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
   .ok { background: var(--blue-tint); color: var(--blue-dark); }
   .stalebadge { background: var(--red-tint); color: var(--red); }
+  .revoked { background: var(--red-tint); color: var(--red); }
   .dir-in { color: var(--blue); font-weight: 700; } .dir-out { color: var(--red); font-weight: 700; }
-  button, input { font: inherit; }
-  input {
-    background: #fff; border: 1px solid var(--line); color: var(--ink);
-    border-radius: 8px; padding: 8px 10px;
-  }
-  button {
-    background: var(--blue); color: #fff; border: 0; border-radius: 8px;
-    padding: 8px 14px; cursor: pointer; font-weight: 700;
-  }
-  button.secondary { background: #fff; color: var(--blue); border: 1.5px solid var(--blue); }
-  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  button, input, textarea { font: inherit; }
+  input, textarea { background: #fff; border: 1px solid var(--line); color: var(--ink);
+    border-radius: 8px; padding: 8px 10px; width: 100%; }
+  textarea { min-height: 76px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+  label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--faint); margin: 12px 0 4px; }
+  button.btn { background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px;
+    cursor: pointer; font-weight: 700; }
+  button.sec { background: #fff; color: var(--blue); border: 1.5px solid var(--blue); }
+  button.tiny { padding: 4px 9px; font-size: 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .err { color: var(--red); font-size: 13px; margin-top: 8px; }
+  .muted { color: var(--mute); font-size: 13px; }
+  .qr { width: 220px; height: 220px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .settings { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 18px; }
+  .settings > div { flex: 1; min-width: 180px; }
   .foot { color: var(--faint); font-size: 12px; margin-top: 26px; }
   a { color: var(--blue); }
 </style>
@@ -71,65 +72,136 @@
 <body>
   <div class="bar">
     <span class="mark">Sonic<span>Access</span></span>
-    <span class="tag">Quezon City University</span>
+    <span class="tag">Quezon City University · shared console</span>
   </div>
   <div class="wrap">
-  <h1>Campus occupancy</h1>
-  <div class="sub" id="sub">connecting…</div>
 
-  <div class="count" id="count">–</div>
-  <div class="today" id="today"></div>
+  <div class="settings">
+    <div><label>Read token</label><input id="readTok" type="password" placeholder="READ_TOKEN" /></div>
+    <div><label>Admin token (registrar / operator)</label><input id="adminTok" type="password" placeholder="ADMIN_TOKEN — optional" /></div>
+    <button class="btn" id="saveTok">Save</button>
+  </div>
 
-  <div class="grid">
-    <div class="card">
-      <h2>Gate nodes</h2>
-      <table><thead><tr><th>Gate</th><th>Dir</th><th>Last seen</th><th></th></tr></thead>
-      <tbody id="nodes"><tr><td colspan="4">–</td></tr></tbody></table>
+  <div class="tabs">
+    <button data-tab="overview" class="active">Overview · Security</button>
+    <button data-tab="enroll">Enrollment · Registrar</button>
+    <button data-tab="discipline">Discipline · Guidance</button>
+  </div>
+
+  <!-- OVERVIEW ---------------------------------------------------------- -->
+  <div class="panel active" id="p-overview">
+    <h1>Campus occupancy</h1>
+    <div class="sub" id="sub">connecting…</div>
+    <div class="count" id="count">–</div>
+    <div class="today" id="today"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Gate nodes</h2>
+        <table><thead><tr><th>Gate</th><th>Dir</th><th>Last seen</th><th></th></tr></thead>
+        <tbody id="nodes"><tr><td colspan="4">–</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <h2>Recent events</h2>
+        <table><thead><tr><th>Student</th><th>Gate</th><th>Dir</th><th>When</th></tr></thead>
+        <tbody id="events"><tr><td colspan="4">–</td></tr></tbody></table>
+      </div>
     </div>
-    <div class="card">
-      <h2>Recent events</h2>
-      <table><thead><tr><th>Student</th><th>Gate</th><th>Dir</th><th>When</th></tr></thead>
-      <tbody id="events"><tr><td colspan="4">–</td></tr></tbody></table>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Operator controls (admin token)</h2>
+      <div class="row" style="margin-top:6px">
+        <input id="adjDelta" type="number" placeholder="±n" style="width:90px" />
+        <button class="sec tiny" id="adjBtn">Adjust</button>
+        <button class="sec tiny" id="resetBtn">Reset to 0</button>
+      </div>
+      <div class="err" id="ctlErr"></div>
     </div>
   </div>
 
-  <div class="card" style="max-width:900px;margin-top:20px">
-    <h2>Operator controls (admin token)</h2>
-    <div class="controls">
-      <input id="adminTok" type="password" placeholder="ADMIN_TOKEN (optional)" size="28" />
-      <input id="adjDelta" type="number" placeholder="±n" style="width:80px" />
-      <button id="adjBtn" class="secondary">Adjust</button>
-      <button id="resetBtn" class="secondary">Reset to 0</button>
+  <!-- ENROLLMENT ------------------------------------------------------- -->
+  <div class="panel" id="p-enroll">
+    <h1>Issue an enrollment code</h1>
+    <div class="sub">Create or update a student, then hand them the QR / code to enroll their phone. Needs the admin token above.</div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Student</h2>
+        <label>Student ID</label><input id="eId" inputmode="numeric" placeholder="e.g. 231868" />
+        <label>Name</label><input id="eName" placeholder="Surname, First" />
+        <label>Section (optional)</label><input id="eSection" placeholder="SBIT4K" />
+        <label>Secret (optional — blank = generate)</label><input id="eSecret" placeholder="leave blank" />
+        <div class="row" style="margin-top:14px">
+          <button class="btn" id="eIssue">Issue / update &amp; show code</button>
+        </div>
+        <div class="err" id="eErr"></div>
+      </div>
+
+      <div class="card">
+        <h2>Enrollment code</h2>
+        <div id="codeEmpty" class="muted">Issue a student to see their code here.</div>
+        <div id="codeBox" style="display:none">
+          <div class="muted" id="codeWho"></div>
+          <img class="qr" id="codeQr" alt="enrollment QR" />
+          <label>Code (student scans the QR or pastes this)</label>
+          <textarea id="codeText" readonly></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="sec tiny" id="codeCopy">Copy code</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="err" id="ctlErr"></div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Roster</h2>
+      <table><thead><tr><th>ID</th><th>Name</th><th>Section</th><th>Status</th><th>v</th><th></th></tr></thead>
+      <tbody id="roster"><tr><td colspan="6" class="muted">enter the admin token, then Refresh</td></tr></tbody></table>
+      <div class="row" style="margin-top:10px"><button class="sec tiny" id="rosterRefresh">Refresh</button></div>
+    </div>
+  </div>
+
+  <!-- DISCIPLINE ----------------------------------------------------- -->
+  <div class="panel" id="p-discipline">
+    <h1>Discipline &amp; guidance</h1>
+    <div class="sub">Planned: one-touch violation logging and disciplinary escalation (proposal Specific Objective 5). Not built yet. For now this desk sees live gate activity.</div>
+    <div class="card">
+      <h2>Gate activity (latest 30)</h2>
+      <table><thead><tr><th>Student</th><th>Gate</th><th>Dir</th><th>Event time</th><th>Recorded</th></tr></thead>
+      <tbody id="discEvents"><tr><td colspan="5" class="muted">–</td></tr></tbody></table>
+    </div>
   </div>
 
   <div class="err" id="err"></div>
-  <div class="foot">
-    auto-refresh 5 s · <a href="#" id="logout">change token</a>
-  </div>
+  <div class="foot">overview auto-refreshes every 5 s</div>
   </div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-let READ = localStorage.getItem('sa_read') || '';
+const LS = { get: (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+             set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 
-function ask() {
-  const t = prompt('READ_TOKEN (from server/.env):', READ || '');
-  if (t === null) return;
-  READ = t.trim();
-  localStorage.setItem('sa_read', READ);
-}
-if (!READ) ask();
+let READ = LS.get('sa_read'), ADMIN = LS.get('sa_admin');
+$('readTok').value = READ; $('adminTok').value = ADMIN;
+$('saveTok').onclick = () => {
+  READ = $('readTok').value.trim(); ADMIN = $('adminTok').value.trim();
+  LS.set('sa_read', READ); LS.set('sa_admin', ADMIN);
+  $('err').textContent = ''; tick(); if (curTab() === 'enroll') loadRoster();
+};
 
 async function api(path, opts = {}) {
-  const headers = Object.assign({ authorization: 'Bearer ' + READ }, opts.headers || {});
-  const r = await fetch(path, Object.assign({}, opts, { headers }));
-  if (r.status === 401) { $('err').textContent = 'token rejected — click "change token"'; throw new Error('401'); }
-  if (!r.ok) throw new Error(path + ' -> ' + r.status);
-  return r.json();
+  const admin = opts.admin;
+  const tok = admin ? ADMIN : READ;
+  const headers = Object.assign({}, opts.headers || {});
+  if (tok) headers.authorization = 'Bearer ' + tok;
+  if (opts.body !== undefined) headers['content-type'] = 'application/json';
+  const r = await fetch(path, {
+    method: opts.method || 'GET', headers,
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || (path + ' -> ' + r.status));
+  return body;
 }
-
 function rel(iso) {
   if (!iso) return '—';
   const s = Math.round((Date.now() - Date.parse(iso)) / 1000);
@@ -137,13 +209,25 @@ function rel(iso) {
   if (s < 3600) return Math.round(s / 60) + 'm ago';
   return Math.round(s / 3600) + 'h ago';
 }
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
+/* -- tabs -------------------------------------------------------------- */
+function curTab() { return LS.get('sa_tab') || 'overview'; }
+function showTab(name) {
+  LS.set('sa_tab', name);
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'p-' + name));
+  if (name === 'enroll') loadRoster();
+  if (name === 'discipline') loadDiscipline();
+}
+document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+showTab(curTab());
+
+/* -- overview -------------------------------------------------------------- */
 async function tick() {
   try {
     const [occ, nodes, ev] = await Promise.all([
-      api('/occupancy'),
-      api('/nodes'),
-      api('/occupancy/events?limit=12'),
+      api('/occupancy'), api('/nodes'), api('/occupancy/events?limit=12'),
     ]);
     $('err').textContent = '';
     const anyStale = nodes.nodes.some((n) => n.stale) || nodes.nodes.length === 0;
@@ -153,51 +237,101 @@ async function tick() {
       `today &nbsp; in <b>${occ.today.in}</b> &nbsp; out <b>${occ.today.out}</b> &nbsp; net <b>${occ.today.net}</b>` +
       ` &nbsp;·&nbsp; last event ${rel(occ.lastEventAt)}`;
     $('sub').textContent = 'updated ' + new Date().toLocaleTimeString();
-
     $('nodes').innerHTML = nodes.nodes.length
       ? nodes.nodes.map((n) =>
-          `<tr><td>${n.gateId}</td><td>${n.direction}</td><td>${rel(n.lastSeenAt)}</td>` +
-          `<td><span class="badge ${n.stale ? 'stalebadge' : 'ok'}">${n.stale ? 'stale' : 'ok'}</span></td></tr>`
-        ).join('')
+          `<tr><td>${esc(n.gateId)}</td><td>${esc(n.direction)}</td><td>${rel(n.lastSeenAt)}</td>` +
+          `<td><span class="badge ${n.stale ? 'stalebadge' : 'ok'}">${n.stale ? 'stale' : 'ok'}</span></td></tr>`).join('')
       : '<tr><td colspan="4">no nodes have checked in</td></tr>';
-
     $('events').innerHTML = ev.events.length
       ? ev.events.map((e) =>
-          `<tr><td>${e.studentId}</td><td>${e.gateId}</td>` +
-          `<td class="dir-${e.direction}">${e.direction}</td><td>${rel(e.eventTs)}</td></tr>`
-        ).join('')
+          `<tr><td>${e.studentId}</td><td>${esc(e.gateId)}</td>` +
+          `<td class="dir-${e.direction}">${e.direction}</td><td>${rel(e.eventTs)}</td></tr>`).join('')
       : '<tr><td colspan="4">none</td></tr>';
-  } catch (e) {
-    if (String(e.message) !== '401') $('err').textContent = String(e.message);
-  }
+  } catch (e) { $('err').textContent = String(e.message); }
 }
-
 async function adminPost(path, body) {
-  const tok = $('adminTok').value.trim();
-  if (!tok) { $('ctlErr').textContent = 'enter ADMIN_TOKEN first'; return; }
+  if (!ADMIN) { $('ctlErr').textContent = 'enter the admin token above'; return; }
   $('ctlErr').textContent = '';
-  try {
-    const r = await fetch(path, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok },
-      body: JSON.stringify(body),
-    });
-    const j = await r.json();
-    if (!r.ok) { $('ctlErr').textContent = j.error || ('HTTP ' + r.status); return; }
-    tick();
-  } catch (e) { $('ctlErr').textContent = String(e.message); }
+  try { await api(path, { method: 'POST', body, admin: true }); tick(); }
+  catch (e) { $('ctlErr').textContent = String(e.message); }
 }
-
 $('adjBtn').onclick = () => {
   const d = parseInt($('adjDelta').value, 10);
   if (!d) { $('ctlErr').textContent = 'enter a non-zero delta'; return; }
-  adminPost('/occupancy/adjust', { delta: d, reason: 'dashboard' });
+  adminPost('/occupancy/adjust', { delta: d, reason: 'console' });
 };
-$('resetBtn').onclick = () => {
-  if (confirm('Reset occupancy to 0?')) adminPost('/occupancy/reset', { to: 0, reason: 'dashboard' });
-};
-$('logout').onclick = (e) => { e.preventDefault(); ask(); tick(); };
+$('resetBtn').onclick = () => { if (confirm('Reset occupancy to 0?')) adminPost('/occupancy/reset', { to: 0, reason: 'console' }); };
 
+/* -- enrollment ------------------------------------------------------- */
+async function showCode(id) {
+  try {
+    const c = await api('/admin/students/' + id + '/enroll-code', { admin: true });
+    $('codeEmpty').style.display = 'none';
+    $('codeBox').style.display = 'block';
+    $('codeWho').textContent = (c.name ? c.name + ' · ' : '') + 'ID ' + c.studentId;
+    $('codeQr').src = c.qrDataUrl;
+    $('codeText').value = c.code;
+    $('eErr').textContent = '';
+  } catch (e) { $('eErr').textContent = String(e.message); }
+}
+$('eIssue').onclick = async () => {
+  $('eErr').textContent = '';
+  if (!ADMIN) { $('eErr').textContent = 'enter the admin token above'; return; }
+  const id = parseInt($('eId').value, 10);
+  const name = $('eName').value.trim();
+  if (!Number.isInteger(id) || !name) { $('eErr').textContent = 'student ID and name are required'; return; }
+  const body = { studentId: id, name };
+  if ($('eSection').value.trim()) body.section = $('eSection').value.trim();
+  if ($('eSecret').value.trim()) body.secret = $('eSecret').value.trim();
+  try {
+    await api('/admin/students', { method: 'POST', body, admin: true });
+    await showCode(id);
+    loadRoster();
+  } catch (e) { $('eErr').textContent = String(e.message); }
+};
+$('codeCopy').onclick = () => {
+  const t = $('codeText'); t.select();
+  navigator.clipboard?.writeText(t.value).catch(() => document.execCommand('copy'));
+};
+async function loadRoster() {
+  if (!ADMIN) { $('roster').innerHTML = '<tr><td colspan="6" class="muted">enter the admin token, then Refresh</td></tr>'; return; }
+  try {
+    const j = await api('/admin/students', { admin: true });
+    $('roster').innerHTML = j.students.map((st) =>
+      `<tr><td>${st.studentId}</td><td>${esc(st.name)}</td><td>${esc(st.section || '')}</td>` +
+      `<td><span class="badge ${st.status === 'revoked' ? 'revoked' : 'ok'}">${st.status}</span></td>` +
+      `<td>${st.secretVersion ?? '—'}</td>` +
+      `<td class="row"><button class="sec tiny" onclick="showCode(${st.studentId})">Code</button>` +
+      `<button class="sec tiny" onclick="rosterAction(${st.studentId},'rotate')">Rotate</button>` +
+      `<button class="sec tiny" onclick="rosterAction(${st.studentId},'revoke')">Revoke</button></td></tr>`).join('')
+      || '<tr><td colspan="6" class="muted">no students yet</td></tr>';
+  } catch (e) { $('roster').innerHTML = '<tr><td colspan="6" class="err">' + esc(e.message) + '</td></tr>'; }
+}
+window.rosterAction = async (id, act) => {
+  if (act === 'revoke' && !confirm('Revoke student ' + id + '? Their pass stops working.')) return;
+  try { await api('/admin/students/' + id + '/' + act, { method: 'POST', body: {}, admin: true });
+    loadRoster(); if (act === 'rotate') showCode(id); }
+  catch (e) { $('eErr').textContent = String(e.message); }
+};
+window.showCode = showCode;
+$('rosterRefresh').onclick = loadRoster;
+
+/* -- discipline ----------------------------------------------------- */
+async function loadDiscipline() {
+  try {
+    const j = await api('/occupancy/events?limit=30');
+    $('discEvents').innerHTML = j.events.length
+      ? j.events.map((e) =>
+          `<tr><td>${e.studentId}</td><td>${esc(e.gateId)}</td>` +
+          `<td class="dir-${e.direction}">${e.direction}</td>` +
+          `<td>${esc((e.eventTs || '').replace('T', ' ').replace(/\..*/, ''))}</td>` +
+          `<td>${rel(e.receivedAt)}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted">none</td></tr>';
+  } catch (e) { $('discEvents').innerHTML = '<tr><td colspan="5" class="err">' + esc(e.message) + '</td></tr>'; }
+}
+
+/* -- go ---------------------------------------------------------------- */
+if (!READ) $('readTok').focus();
 tick();
 setInterval(tick, 5000);
 </script>

@@ -1,17 +1,21 @@
 /**
  * /admin — registrar / provisioning. Requires ADMIN_TOKEN.
  *
- *   POST   /admin/students             upsert a student + set their active secret
- *   GET    /admin/students             list roster (?withSecrets=1 to include secrets)
- *   GET    /admin/students/:id         one student (?withSecret=1)
- *   POST   /admin/students/:id/rotate  new secret version (body.secret optional)
- *   POST   /admin/students/:id/revoke  mark revoked, deactivate all secrets
+ *   POST   /admin/students                 upsert a student + set their active secret
+ *                                          (body.secret optional -> auto-generated)
+ *   GET    /admin/students                 list roster (?withSecrets=1 to include secrets)
+ *   GET    /admin/students/:id             one student (?withSecret=1)
+ *   GET    /admin/students/:id/enroll-code the base64 enrollment code + a QR data URL
+ *   POST   /admin/students/:id/rotate      new secret version (body.secret optional)
+ *   POST   /admin/students/:id/revoke      mark revoked, deactivate all secrets
  */
 
 import { Router } from 'express';
+import QRCode from 'qrcode';
 
 import { db, tx, nowIso } from '../db.mjs';
 import { newSecret } from '../secretgen.mjs';
+import { buildEnrollCode } from '../enrollCode.mjs';
 import { HttpError, optStr, str, studentId as vStudentId } from '../validate.mjs';
 
 export const admin = Router();
@@ -82,7 +86,11 @@ admin.post('/students', (req, res) => {
   const name = str(b.name, 'name', { max: 200 });
   const program = optStr(b.program, 'program', { max: 64 });
   const section = optStr(b.section, 'section', { max: 64 });
-  const secret = str(b.secret, 'secret', { min: 8, max: 256 });
+  // secret optional — the registrar rarely wants to invent one
+  const secret =
+    b.secret == null || b.secret === ''
+      ? newSecret()
+      : str(b.secret, 'secret', { min: 8, max: 256 });
 
   const version = tx(() => {
     q.upsertStudent.run(id, name, program, section, nowIso());
@@ -90,6 +98,18 @@ admin.post('/students', (req, res) => {
   });
 
   res.status(201).json({ student: shape(q.joined.get(id), true), secretVersion: version });
+});
+
+admin.get('/students/:id/enroll-code', async (req, res) => {
+  const id = vStudentId(req.params.id, 'id');
+  const row = q.joined.get(id);
+  if (!row) throw new HttpError(404, 'student not found');
+  if (row.status !== 'active' || !row.secret) {
+    throw new HttpError(409, 'student has no active secret — issue or rotate one first');
+  }
+  const { code, json } = buildEnrollCode({ studentId: id, secret: row.secret, name: row.name });
+  const qrDataUrl = await QRCode.toDataURL(code, { width: 256, margin: 1, errorCorrectionLevel: 'M' });
+  res.json({ studentId: id, name: row.name, code, json, qrDataUrl });
 });
 
 admin.get('/students', (req, res) => {

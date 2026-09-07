@@ -45,17 +45,22 @@ Legend: `[x]` done · `[~]` partial · `[ ]` not started · `[-]` out of Phase 1
 
 - [x] **Node.js + Express backend** — `server/` (registry, provisioning, secret
   pull, event ingest, occupancy).
-- [~] **Dashboard** — static HTML page at `/` (occupancy, node liveness, recent
-  events, operator controls). Not a React app.
+- [~] **Console** — static HTML page at `/`, a **shared-device console with
+  three tabs**: Overview·Security, Enrollment·Registrar, Discipline·Guidance.
+  Not a React app.
 - [~] **Database** — SQLite (`node:sqlite`); the proposal does not name a DB.
 
-### Users served
+### Users served (one shared console at the gate desk)
 
 - [x] **Students** — the mobile app.
-- [~] **Gate security personnel** — the occupancy dashboard exists; no dedicated
-  guard console, no vehicle-queue view.
-- [ ] **Prefect of Discipline** — no infraction logging / disciplinary dashboard
-  (Specific Objective 5).
+- [~] **Gate security personnel** — Overview tab: live occupancy, node liveness,
+  recent events, manual count correction. No vehicle-queue view.
+- [~] **Registrar** — Enrollment tab: create/update a student and get the
+  enrollment **code + QR** on screen for the student to scan. Roster with
+  rotate / revoke.
+- [ ] **Prefect of Discipline / Guidance** — Discipline tab is a placeholder
+  (live gate activity only); one-touch violation logging (Specific Objective 5)
+  not built.
 
 ### Out of Phase 1 (in the proposal, later phases)
 
@@ -108,13 +113,18 @@ Added because Phase 1 could not be built, run, or trusted without them.
 - [x] **`import-seed`**, `LOG_REQUESTS` toggle, 13-case API test suite, deploy
   notes (systemd unit, SQLite backup).
 
-### Client login / enrollment
+### Login / enrollment
 - [x] **Password login (model A)** — student number + password; the secret is
   sealed on-device with `scrypt` + XChaCha20-Poly1305 and never leaves it in the
   clear. `src/services/vault.ts`, `authService.ts`, `EnrollScreen`,
   `UnlockScreen`; `App.tsx` routes and re-locks on background.
-- [x] **QR enrollment** — `expo-camera` scan of the registrar payload
-  (`enrollmentCode.ts`), manual-paste fallback.
+- [x] **QR enrollment (client)** — `expo-camera` scan of the registrar payload
+  (`enrollmentCode.ts`), manual-paste fallback; base64 is the canonical
+  paste-safe code, parser repairs smart quotes / whitespace.
+- [x] **Registrar enrollment-code generator** — `GET /admin/students/:id/
+  enroll-code` (base64 + PNG QR data URL); driven from the console's Enrollment
+  tab, or `npm run enroll-code` from the CLI. `POST /admin/students` now
+  auto-generates the secret if omitted.
 - [x] **Attempt lockout** — vault self-wipes after 10 wrong passwords.
 - [ ] biometric unlock, timed key cache, signed/one-time enrollment payload
   (C2b).
