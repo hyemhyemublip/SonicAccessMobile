@@ -141,6 +141,10 @@ Added because Phase 1 could not be built, run, or trusted without them.
 - [x] **`SHOW_DEBUG` flag** (`src/config.ts`) — hides the `window <counter>`
   diagnostic in release builds.
 - [x] **Local `verifyToken` self-check** before every emit.
+- [x] **Provably-offline build** — `eas.json` profiles + `app.config.js` blocks
+  the Android `INTERNET` permission for `preview` / `production` (only
+  `development` keeps it, for Metro). `app.json` has real package /
+  bundle IDs. Left: `eas init` + first cloud build (needs an Expo account).
 
 ### Documentation added
 - [x] `README.md`, `RUNNING.md` (Expo Go run guide), `BACKEND.md`,

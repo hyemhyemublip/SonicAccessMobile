@@ -13,7 +13,7 @@ usable speaker path.
 | ------------------- | ---------------------------------------------------------- |
 | Node.js 22+         | `node -v`. The seed/self-test scripts use `--experimental-strip-types`. |
 | npm                 | ships with Node.                                            |
-| A phone             | Android 6+ or iOS 15+, with a working speaker.              |
+| A phone             | Android 6+ or iOS 15+, with a working speaker and camera (for the QR). |
 | Same-ish network    | Phone and computer on the same Wi-Fi **or** use `--tunnel` (below). |
 
 Install project dependencies once:
@@ -96,29 +96,28 @@ The JS bundle downloads (first load is slower), then the app starts on the
 
 ## 5. Enroll a test student
 
-The client stores one student credential in the OS keychain. Get a sample one
-from the seed roster:
+Enrollment takes a **code** from the registrar (the base64 of
+`{ studentId, secret }`), then you set an **unlock password**. Get a test code:
 
 ```bash
-npm run seed -- --show --vectors
-```
-
-Pick a row, e.g.:
-
-```
-studentId  231800
-secret     SZCGVTXAKJWPLFZ5WN6SEGG72R7O7OVQ   (from seed/students.json)
+npm run enroll-code -- 231800        # one seeded student
+npm run enroll-code -- --all         # all of them
 ```
 
 In the app:
 
-1. **Student ID** → `231800`
-2. **Secret** → paste the secret string
-3. **Name** (optional) → anything, shown on this screen only
-4. **Save enrollment**
+1. On the enroll screen, tap **Enter the code manually** and paste the base64
+   string (or scan its QR — see below).
+2. Set a password (8+ characters), confirm it, tap **Create login**.
+3. On next launch (or after Lock) you'll type that password to unlock.
 
 You land on the gate-pass screen showing a big 6-digit **code** and a countdown
-bar. The code rolls every 15 seconds.
+bar. The code rolls every 15 seconds. The secret is sealed on-device with the
+password — it is never stored in the clear.
+
+To test the QR scan instead: turn the base64 string into a QR with any
+generator, or open the console's **Enrollment · Registrar** tab (`GET /`), issue
+the student, and scan the QR it shows.
 
 ---
 
@@ -152,18 +151,55 @@ there. Use this only for visual checks.
 
 ---
 
-## 8. Handy scripts
+## 8. Standalone build (EAS)
+
+Expo Go is dev-only. For a real, installable app — and to verify it runs fully
+offline — build with EAS. Profiles are in `eas.json`; `app.config.js` blocks the
+Android `INTERNET` permission for every profile except `development`.
+
+One-time setup (needs a free Expo account + connectivity):
+
+```bash
+npm i -g eas-cli          # or use: npx eas-cli <cmd>
+eas login
+eas init                  # writes extra.eas.projectId into app.json — commit it
+```
+
+Build an installable APK:
+
+```bash
+eas build --profile preview --platform android      # internal APK
+eas build --profile production --platform android    # store bundle (.aab)
+eas build --profile development --platform android    # dev client (INTERNET allowed, for Metro)
+```
+
+iOS is analogous (`--platform ios`; needs an Apple account).
+
+### Verify it is offline
+
+1. Install the `preview` APK on a phone.
+2. Enroll: scan the QR from the registrar console (that page needs a network to
+   load, but the app's enrollment itself is local — the QR is just data).
+3. Turn on **airplane mode**.
+4. Unlock with your password, tap **Emit gate pass** — it must still produce the
+   code and play the chirp.
+5. Confirm the manifest: `aapt dump permissions <apk> | grep INTERNET` prints
+   nothing (the `preview`/`production` builds have it blocked).
+
+---
+
+## 9. Handy scripts
 
 ```bash
 npm run typecheck              # tsc --noEmit
-npm run selftest               # token crypto self-test (RFC 4226 vectors)
-npm run seed -- --show         # view the current student roster
+npm test                       # typecheck + token + FSK + enroll + e2e suites
 npm run seed -- --show --vectors   # roster + each student's live 6-digit code
+npm run enroll-code -- 231800      # a test enrollment code (base64 + JSON)
 ```
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom                                         | Fix                                                                 |
 | ---------------------------------------------- | ------------------------------------------------------------------ |

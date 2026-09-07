@@ -63,11 +63,17 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
 - Follow-up: swap the default Expo app icon / splash for QCU branding; on-device
   polish pass (font scaling, screen-reader labels beyond the code).
 
-### C3. EAS build config
-- `eas.json` + build profiles; strip Android `INTERNET` permission in `app.json`
-  for provably-offline builds.
-- Verify the standalone build runs fully offline (enroll once online, then
-  airplane mode).
+### C3. EAS build config — DONE
+- `eas.json` — `development` / `preview` / `production` profiles.
+- `app.config.js` — blocks the Android `INTERNET` permission for every profile
+  except `development` (which sets `SONIC_ALLOW_INTERNET=1` for Metro). Verified
+  via `expo config`: release config carries
+  `blockedPermissions: ['android.permission.INTERNET']`.
+- `app.json` — `package` / `bundleIdentifier` `ph.edu.qcu.sonicaccess`,
+  versionCode / buildNumber.
+- Build + offline-verification steps in `RUNNING.md` §8.
+- Left: run `eas init` (writes `extra.eas.projectId`) and the first cloud build
+  — needs an Expo account + connectivity.
 
 ## Later: E — gate node firmware (needs hardware)
 

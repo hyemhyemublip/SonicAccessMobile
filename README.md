@@ -62,7 +62,8 @@ unlock, emit gate passes, auto-locks on background. Details:
 | Path              | What                                                        |
 | ----------------- | ---------------------------------------------------------- |
 | `App.tsx`         | Router: loading → enroll → unlock → gate pass.             |
-| `RUNNING.md`      | Step-by-step run guide (Expo Go, dev server, on-device).   |
+| `app.config.js` / `eas.json` | EAS build profiles; release builds block Android `INTERNET`. |
+| `RUNNING.md`      | Step-by-step run guide (Expo Go, dev server, EAS build).   |
 | `BACKEND.md`      | Backend design overview (data model, flows, security).     |
 | `ROADMAP.md`      | Phase 1 status and what's next.                            |
 | `IMPLEMENTATION_CHECKLIST.md` | Build vs proposal scope; what we added beyond it. |

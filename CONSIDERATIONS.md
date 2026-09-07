@@ -19,9 +19,12 @@ credential read are all local). Conditions to keep it that way:
 - **No OTA updates.** `expo-updates` is not installed, so the app never checks
   in for a new bundle. Keep it that way for an air-gapped gate, or gate the
   update check behind connectivity if it's added later.
-- **Android `INTERNET` permission** is not needed for any app function. Expo
-  adds it by default — decide whether to strip it in `app.json` so the build is
-  provably offline.
+- **Android `INTERNET` permission — BLOCKED for release.** `app.config.js` adds
+  `blockedPermissions: ['android.permission.INTERNET']` for every EAS profile
+  except `development` (which sets `SONIC_ALLOW_INTERNET=1` so a dev client can
+  reach Metro). So `preview` / `production` builds are provably offline.
+  Possible further trim: `RECORD_AUDIO` (we only play), if `setAudioModeAsync`
+  turns out not to need it.
 - If you later add registrar provisioning (auto-issue id+secret instead of
   paste), that one enrollment call needs network — after that, offline again.
 
