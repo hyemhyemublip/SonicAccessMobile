@@ -27,11 +27,12 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
 
 ## Next: C — client polish (no hardware needed)
 
-### C1. Robustness pair (small, do first)
-- Debug line (`window <counter> · code …`) behind a dev flag; off in release.
-- Clock-sanity warning: if `Date.now()` is implausible (or drift shows up via a
-  node ack later), tell the student to set date & time to automatic — the
-  rolling code breaks past ~±15 s of drift.
+### C1. Robustness pair — DONE
+- `config.SHOW_DEBUG` (`__DEV__`) gates the `window <counter>` line; off in a
+  release build.
+- `services/clock` — `checkClock` / `clockWarning`; `GatePassScreen` shows a
+  banner when the device year is out of 2025–2100 or the clock is set before the
+  build. (A network/ack-based drift check comes later with the node ack.)
 
 ### C2. Login + provisioning — **model A** (see `CONSIDERATIONS.md`)
 - Student logs in with **student number + short alphanumeric password**. The

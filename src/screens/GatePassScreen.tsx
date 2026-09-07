@@ -7,6 +7,10 @@
  *    6-digit rolling code (recomputed ~3x/second) with a countdown bar, plus an
  *    "Emit gate pass" button that modulates that code to an ultrasonic WAV and
  *    plays it through the speaker for the gate node to decode.
+ *
+ * Shows a clock-drift warning (`utils/clock`) when the device time looks wrong,
+ * since the rolling code depends on it. The `window <counter>` diagnostic line
+ * is gated on `SHOW_DEBUG` (dev only).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -44,6 +48,8 @@ import {
   cleanupChirps,
   synthesizeChirp,
 } from '../utils/audioSynthesizer';
+import { clockWarning } from '../services/clock';
+import { SHOW_DEBUG } from '../config';
 
 type Phase = 'loading' | 'enroll' | 'ready';
 
@@ -243,6 +249,7 @@ export default function GatePassScreen() {
   const codeGrouped = `${codeStr.slice(0, 3)} ${codeStr.slice(3)}`;
   const emittedThisWindow = live != null && emittedCounter === live.counter;
   const expiringSoon = secsLeft <= 4;
+  const clockMsg = clockWarning();
 
   return (
     <View style={styles.container}>
@@ -250,6 +257,12 @@ export default function GatePassScreen() {
       <Text style={styles.subtitle}>
         {credential?.name ? `${credential.name} · ` : ''}ID {credential?.studentId}
       </Text>
+
+      {clockMsg ? (
+        <View style={styles.warnBanner}>
+          <Text style={styles.warnText}>{clockMsg}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.codeCard}>
         <Text style={styles.codeLabel}>YOUR CODE THIS WINDOW</Text>
@@ -294,7 +307,9 @@ export default function GatePassScreen() {
           : 'Point the phone speaker at the gate node, then tap Emit.'}
       </Text>
 
-      <Text style={styles.debugLine}>window {live?.counter ?? '—'}</Text>
+      {SHOW_DEBUG ? (
+        <Text style={styles.debugLine}>window {live?.counter ?? '—'}</Text>
+      ) : null}
 
       <Pressable onPress={handleReenroll} style={styles.linkBtn}>
         <Text style={styles.linkText}>Re-enroll this device</Text>
@@ -388,6 +403,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   debugLine: { color: '#475569', fontSize: 12, marginTop: 10, textAlign: 'center' },
+  warnBanner: {
+    backgroundColor: '#7c2d12',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  warnText: { color: '#fdba74', fontSize: 13, lineHeight: 18 },
   linkBtn: { marginTop: 'auto', marginBottom: 32, alignItems: 'center' },
   linkText: { color: '#64748b', fontSize: 14 },
 });

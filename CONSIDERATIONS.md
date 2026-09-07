@@ -42,9 +42,12 @@ current window ± 1 (~45 s of total slack).
   So "follows the real timezone" is not needed — both sides just need the
   correct absolute instant. (Display strings like an event's timestamp can be
   localised to campus time later; the crypto never touches timezone.)
-- Still open: widen the drift window? Add a "your clock looks wrong" warning in
-  the app when `Date.now()` is implausible? Longer `TIME_STEP_MS` trades
-  security for drift tolerance.
+- **Clock warning — BUILT.** `src/services/clock.ts` (`checkClock` /
+  `clockWarning`); `GatePassScreen` shows a banner when the device year is
+  outside 2025–2100 or the clock is set before `config.BUILD_EPOCH_MS`. It is
+  best-effort (no network reference); a tighter drift check waits for the node
+  ack. Still open: widen the gate drift window? Longer `TIME_STEP_MS`? Both
+  trade security for tolerance.
 
 ## Gate nodes — DECIDED: two nodes (entry + exit)
 

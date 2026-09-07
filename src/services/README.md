@@ -31,6 +31,21 @@ On-device enrollment, stored in the OS keychain via `expo-secure-store`.
 
 Keys: `sonic.studentId`, `sonic.secret`, `sonic.name`.
 
+## `clock.ts`
+
+Best-effort device-clock sanity check — no network reference (Phase 1 is
+offline).
+
+- `checkClock(now?)` → `{ ok, reason?, detail? }`. Fails if the year is outside
+  2025–2100 or the clock is set earlier than `config.BUILD_EPOCH_MS` (minus a
+  day's slack).
+- `clockWarning(now?)` → a one-line UI string, or `null` when the clock looks
+  fine. `GatePassScreen` shows it as a banner.
+
+Rationale: the rolling code is time-based; if the phone clock drifts past the
+gate's ~30–45 s acceptance window every emit is silently rejected. Bump
+`BUILD_EPOCH_MS` in `src/config.ts` on each release.
+
 ## Tests
 
 ```bash

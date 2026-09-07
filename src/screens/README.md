@@ -33,6 +33,9 @@ few seconds; **Emit** modulates whatever code is showing and plays the chirp.
 - Calls `setAudioModeAsync({ playsInSilentMode: true })` so the chirp plays with
   the ringer switch off.
 - `emitting` guards against double-taps.
-- The debug line (`window <counter> · code <6-digit>`) is intentional for the pilot —
-  it lets you cross-check against the gate log. Drop it before a public release.
+- The `window <counter>` diagnostic line is gated on `config.SHOW_DEBUG`
+  (`__DEV__`) — it's off in a release build.
+- A clock-drift banner (`services/clock` → `clockWarning`) appears above the
+  code card when the device time looks wrong, since the rolling code depends on
+  it.
 - Needs a real device: simulators have no speaker.
