@@ -17,6 +17,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -24,6 +25,13 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-aud
 
 import { SHOW_DEBUG } from '../config';
 import { clockWarning } from '../services/clock';
+import {
+  BiometricUnavailable,
+  biometricEnabled,
+  biometricSupported,
+  disableBiometric,
+  enableBiometric,
+} from '../services/authService';
 import {
   TIME_STEP_MS,
   formatCode,
@@ -46,11 +54,16 @@ export default function GatePassScreen({ studentId, name, secret, onLock }: Prop
   const [emitting, setEmitting] = useState(false);
   const [live, setLive] = useState<SonicToken | null>(null);
   const [emittedCounter, setEmittedCounter] = useState<number | null>(null);
+  const [bioAvail, setBioAvail] = useState(false);
+  const [bioOn, setBioOn] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
   const playerRef = useRef<AudioPlayer | null>(null);
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
     cleanupChirps();
+    biometricSupported().then(setBioAvail).catch(() => setBioAvail(false));
+    biometricEnabled().then(setBioOn).catch(() => setBioOn(false));
     return () => {
       playerRef.current?.remove();
       playerRef.current = null;
@@ -100,6 +113,35 @@ export default function GatePassScreen({ studentId, name, secret, onLock }: Prop
       setEmitting(false);
     }
   }, [emitting, secret, studentId]);
+
+  const toggleBiometric = useCallback(
+    async (next: boolean) => {
+      if (bioBusy) return;
+      setBioBusy(true);
+      try {
+        if (next) {
+          await enableBiometric(secret);
+          setBioOn(true);
+        } else {
+          await disableBiometric();
+          setBioOn(false);
+        }
+      } catch (e) {
+        setBioOn(!next);
+        Alert.alert(
+          'Biometric unlock',
+          e instanceof BiometricUnavailable
+            ? "This device can't store a fingerprint / Face ID–protected value. Make sure a screen lock is set up."
+            : e instanceof Error
+              ? e.message
+              : String(e),
+        );
+      } finally {
+        setBioBusy(false);
+      }
+    },
+    [bioBusy, secret],
+  );
 
   const windowSecs = Math.round(TIME_STEP_MS / 1000);
   const msLeft = live ? Math.max(0, live.expiresAt - live.generatedAt) : 0;
@@ -163,6 +205,19 @@ export default function GatePassScreen({ studentId, name, secret, onLock }: Prop
           : 'Point the phone speaker at the gate node, then tap Emit.'}
       </Text>
 
+      {bioAvail ? (
+        <View style={s.bioRow}>
+          <Text style={[text.body, { flex: 1 }]}>Unlock with fingerprint / Face ID</Text>
+          <Switch
+            value={bioOn}
+            onValueChange={toggleBiometric}
+            disabled={bioBusy}
+            trackColor={{ true: palette.blue, false: palette.line }}
+            thumbColor={palette.white}
+          />
+        </View>
+      ) : null}
+
       {SHOW_DEBUG ? <Text style={s.debug}>window {live?.counter ?? '—'}</Text> : null}
     </Screen>
   );
@@ -213,6 +268,13 @@ const s = StyleSheet.create({
     lineHeight: 19,
     marginTop: t.space.lg,
     textAlign: 'center',
+  },
+  bioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.space.md,
+    marginTop: t.space.xl,
+    paddingHorizontal: t.space.xs,
   },
   debug: { color: palette.inkFaint, fontSize: 12, marginTop: t.space.md, textAlign: 'center' },
 });

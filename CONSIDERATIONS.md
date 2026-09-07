@@ -30,17 +30,17 @@ credential read are all local). Conditions to keep it that way:
 
 ## Clock drift (rolling-window dependency)
 
-The 6-digit code is `HOTP(secret, floor(now / 15s))`. The gate accepts the
-current window ± 1 (~45 s of total slack).
+The 6-digit code is `HOTP(secret, floor(now / 30s))`. The gate accepts the
+current window ± 1 (~90 s of total slack).
 
 - **Phone clock** must stay within that slack of real time. "Automatic date &
   time" on the device handles it (syncs via cell NITZ / GPS even without a data
-  plan). A device left off / offline for days can drift past 45 s and stop
+  plan). A device left off / offline for days can drift past the window and stop
   verifying until its clock re-syncs.
 - **Gate node clock — DECIDED: NTP.** Each node syncs to a time server on boot
   and periodically. NTP gives absolute **UTC** time; the timezone the campus is
   in does not matter, because the rolling counter is `floor(unixEpochMillis /
-  15000)` — a count of 15 s slots since 1970-01-01 UTC, the same integer
+  30000)` — a count of 30 s slots since 1970-01-01 UTC, the same integer
   everywhere on Earth. The phone's "Automatic date & time" does the equivalent.
   So "follows the real timezone" is not needed — both sides just need the
   correct absolute instant. (Display strings like an event's timestamp can be
@@ -49,8 +49,12 @@ current window ± 1 (~45 s of total slack).
   `clockWarning`); `GatePassScreen` shows a banner when the device year is
   outside 2025–2100 or the clock is set before `config.BUILD_EPOCH_MS`. It is
   best-effort (no network reference); a tighter drift check waits for the node
-  ack. Still open: widen the gate drift window? Longer `TIME_STEP_MS`? Both
-  trade security for tolerance.
+  ack.
+- **`TIME_STEP_MS` = 30 s** (was 15 s) — chosen to give more clock-drift
+  tolerance at the gate (± 1 window ≈ 90 s). Trade-off: a captured chirp is
+  replayable a bit longer, mitigated by the node's `(studentId, counter)` cache.
+  Still open: widening the gate's drift acceptance beyond ± 1 if field clocks
+  are worse than expected.
 
 ## Gate nodes — DECIDED: two nodes (entry + exit)
 
@@ -113,10 +117,13 @@ Client: `src/services/vault.ts`, `authService.ts`, `enrollmentCode.ts`,
   handed to `App`, kept **in memory only**. `App` re-locks once the app has been
   backgrounded longer than `SESSION_TTL_MS` (3 min); quick app switches keep the
   session.
-- **Biometric unlock** (opt-in at enrollment): a copy of the secret sits behind
-  `expo-secure-store` `requireAuthentication`; `UnlockScreen` auto-prompts on
-  mount and has a button. Password is always the fallback. Not yet tested on a
-  physical device.
+- **Biometric unlock** (opt-in): a copy of the secret sits behind
+  `expo-secure-store` `requireAuthentication`. Enable it either at enrollment
+  (toggle on `EnrollScreen`) or later from the **toggle on `GatePassScreen`**
+  (`enableBiometric(secret)` / `disableBiometric()`). `UnlockScreen` auto-prompts
+  on mount and has a button; password is always the fallback. Not yet tested on
+  a physical device — in Expo Go `requireAuthentication` is flaky on Android, so
+  the toggle surfaces a `BiometricUnavailable` alert if the store write fails.
 - **Wrong password**: Poly1305 tag fails → `WrongPasswordError` with
   `attemptsLeft`; after `MAX_UNLOCK_ATTEMPTS` (10) the vault self-wipes
   (`LockedOut`) → re-enroll.
@@ -213,7 +220,7 @@ Same as the app — the number is **not** downloaded from anywhere and the app
 does not invent it. Both devices *compute* it:
 
 ```
-code = HOTP(secret, floor(unixMillis / 15000)) mod 1_000_000
+code = HOTP(secret, floor(unixMillis / 30000)) mod 1_000_000
 ```
 
 Inputs: the fixed **secret** (issued once at provisioning, stored on the device)

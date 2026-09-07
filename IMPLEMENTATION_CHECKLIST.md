@@ -14,7 +14,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` not started · `[-]` out of Phase 1
 
 - [x] **Mobile client generates a dynamic, time-based rolling code**
   `src/services/tokenGenerator.ts` — HOTP / RFC 4226 (HMAC-SHA1, dynamic
-  truncation), 15 s window, 6-digit code.
+  truncation), 30 s window, 6-digit code.
 - [x] **Modulated to an inaudible FSK chirp**
   `src/utils/audioSynthesizer.ts` — binary FSK (17 / 18 / 19 kHz), preamble +
   start marker + 48-bit payload, 16-bit PCM WAV, played via `expo-audio`.
@@ -126,9 +126,10 @@ Added because Phase 1 could not be built, run, or trusted without them.
   tab, or `npm run enroll-code` from the CLI. `POST /admin/students` now
   auto-generates the secret if omitted.
 - [x] **Attempt lockout** — vault self-wipes after 10 wrong passwords.
-- [x] **Biometric unlock** — opt-in at enrollment; Face ID / fingerprint returns
-  the secret via `expo-secure-store` `requireAuthentication`, password always a
-  fallback. (Not yet tested on a device.)
+- [x] **Biometric unlock** — opt-in at enrollment or via a toggle on the gate
+  screen; Face ID / fingerprint returns the secret via `expo-secure-store`
+  `requireAuthentication`, password always a fallback. (Not yet tested on a
+  device.)
 - [x] **Timed session** — re-locks after `SESSION_TTL_MS` (3 min) of background,
   not every app switch.
 - [ ] Signed / one-time enrollment payload (needs a backend signer).

@@ -112,7 +112,7 @@ In the app:
 3. On next launch (or after Lock) you'll type that password to unlock.
 
 You land on the gate-pass screen showing a big 6-digit **code** and a countdown
-bar. The code rolls every 15 seconds. The secret is sealed on-device with the
+bar. The code rolls every 30 seconds. The secret is sealed on-device with the
 password — it is never stored in the clear.
 
 To test the QR scan instead: turn the base64 string into a QR with any
@@ -129,7 +129,7 @@ the student, and scan the QR it shows.
    tick — the tone itself is near-inaudible.
 3. Cross-check: run `npm run seed -- --show --vectors` again immediately. The
    `code (6-digit)` printed for `231800` must equal the code the app showed, as
-   long as you check within the same 15-second window.
+   long as you check within the same 30-second window.
 
 There is **one gate node** in this pilot — it decodes the chirp, re-derives the
 expected code for the current window (± 1 window of clock drift), and opens the

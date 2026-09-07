@@ -1,11 +1,12 @@
 /**
  * Device-clock sanity check.
  *
- * The rolling code is `HOTP(secret, floor(now / 15s))`. The gate accepts the
- * current window ± 1 (~30–45 s of slack). If the phone clock has drifted past
- * that, every emit is rejected and the student has no idea why. There is no
- * network reference here (Phase 1 is offline), so this is a best-effort check:
- * the year must be sane, and the clock must not be earlier than the build.
+ * The rolling code is `HOTP(secret, floor(now / TIME_STEP_MS))`. The gate
+ * accepts the current window ± 1 (~60–90 s of slack). If the phone clock has
+ * drifted past that, every emit is rejected and the student has no idea why.
+ * There is no network reference here (Phase 1 is offline), so this is a
+ * best-effort check: the year must be sane, and the clock must not be earlier
+ * than the build.
  */
 
 import { BUILD_EPOCH_MS } from '../config';

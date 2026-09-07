@@ -6,10 +6,10 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
 
 ## Done
 
-- **Client core** — `tokenGenerator` (HOTP/RFC 4226 rolling 6-digit code, 48-bit
-  FSK payload + CRC-8), `audioSynthesizer` (binary FSK ultrasonic WAV),
-  `authService` (on-device enrollment), `GatePassScreen` (authenticator-style
-  live code + emit).
+- **Client core** — `tokenGenerator` (HOTP/RFC 4226 rolling 6-digit code, **30 s
+  window**, 48-bit FSK payload + CRC-8), `audioSynthesizer` (binary FSK
+  ultrasonic WAV), `authService` (on-device enrollment), `GatePassScreen`
+  (authenticator-style live code + emit).
 - **Reference decoder + round-trip test** — `scripts/fsk-decoder.mjs`
   (`decodeWav`, mirrors `src/PROTOCOL.md`), `scripts/roundtrip-test.mjs`
   (`npm run test:audio`) under offset / noise / low-amplitude / tamper.
@@ -50,10 +50,11 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
   on background.
 - `npm run test:enroll` green.
 ### C2b. Login hardening — mostly DONE
-- **Biometric unlock** — opt-in toggle at enrollment; `UnlockScreen` auto-prompts
-  on mount + has a button. A copy of the secret sits behind
-  `expo-secure-store` `requireAuthentication`; falls back to the password on
-  cancel / unavailable. (Untested on a physical device.)
+- **Biometric unlock** — opt-in at enrollment **or** via a toggle on
+  `GatePassScreen` (`enableBiometric` / `disableBiometric`); `UnlockScreen`
+  auto-prompts on mount + has a button. Secret copy behind `expo-secure-store`
+  `requireAuthentication`; password fallback on cancel / unavailable. (Untested
+  on a physical device.)
 - **Timed session** — `App` re-locks only after `SESSION_TTL_MS` (3 min) of
   background, not on every app switch.
 - [ ] Signed / one-time enrollment payload — still open (needs a backend signer).

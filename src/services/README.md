@@ -10,7 +10,7 @@ The security-critical path. Produces the rolling acoustic token.
   payload (MSB first): `studentId(20) | rollingCode(20) | CRC-8(8)`.
 - `rollingCode = HOTP(secret, floor(now / TIME_STEP_MS)) mod 1_000_000` (6-digit
   decimal, RFC 6238 style), HOTP per
-  RFC 4226 (HMAC-SHA1, dynamic truncation). `TIME_STEP_MS = 15000`.
+  RFC 4226 (HMAC-SHA1, dynamic truncation). `TIME_STEP_MS = 30000`.
 - `verifyToken(secret, bits, now?, driftSteps?)` — reference verifier that
   mirrors the gate check (current window ± `driftSteps`). Used for the client
   self-check before emitting and by `scripts/token-selftest.mjs`.
@@ -90,8 +90,8 @@ offline).
   fine. `GatePassScreen` shows it as a banner.
 
 Rationale: the rolling code is time-based; if the phone clock drifts past the
-gate's ~30–45 s acceptance window every emit is silently rejected. Bump
-`BUILD_EPOCH_MS` in `src/config.ts` on each release.
+gate's ~60–90 s acceptance window (30 s window ± 1) every emit is silently
+rejected. Bump `BUILD_EPOCH_MS` in `src/config.ts` on each release.
 
 ## Tests
 

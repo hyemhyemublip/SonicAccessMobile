@@ -25,7 +25,7 @@ const sha1 = sha1Import as unknown as {
 };
 
 /** Length of one rolling window. The emitted code is valid for this long. */
-export const TIME_STEP_MS = 15000;
+export const TIME_STEP_MS = 30000;
 
 /**
  * Rolling code is a 6-digit decimal, RFC 6238 / Google-Authenticator style:

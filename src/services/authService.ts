@@ -126,6 +126,29 @@ export async function biometricEnabled(): Promise<boolean> {
   return (await SecureStore.getItemAsync(K_BIO_FLAG)) === '1';
 }
 
+/**
+ * Turn biometric unlock on after enrollment — needs the plaintext secret (the
+ * caller has it because the session is unlocked). Throws `BiometricUnavailable`
+ * if the device can't store an auth-gated item.
+ */
+export async function enableBiometric(secret: string): Promise<void> {
+  if (!secret) throw new Error('no secret to protect');
+  try {
+    await SecureStore.setItemAsync(K_BIO, secret, BIO_STORE_OPTS);
+    await SecureStore.setItemAsync(K_BIO_FLAG, '1');
+  } catch {
+    await SecureStore.deleteItemAsync(K_BIO).catch(() => {});
+    await SecureStore.deleteItemAsync(K_BIO_FLAG).catch(() => {});
+    throw new BiometricUnavailable('this device cannot store a biometric-protected value');
+  }
+}
+
+/** Turn biometric unlock off. */
+export async function disableBiometric(): Promise<void> {
+  await SecureStore.deleteItemAsync(K_BIO);
+  await SecureStore.deleteItemAsync(K_BIO_FLAG);
+}
+
 export async function getEnrollment(): Promise<Enrollment | null> {
   const raw = await SecureStore.getItemAsync(K_META);
   if (!raw) return null;

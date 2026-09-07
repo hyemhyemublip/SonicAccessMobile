@@ -87,7 +87,7 @@ Use `--show` to view what's already there. `--force` is only for a fresh
 rotation and breaks any device enrolled against the old secrets.
 
 `--vectors` prints live gate-side test vectors: for each student, the current
-15-second `counter` and the 6-digit `rollingCode`. They expire in ~15 s — use them to
+30-second `counter` and the 6-digit `rollingCode`. They expire in ~30 s — use them to
 sanity-check a gate decoder against a known-good value right now.
 
 ## Note

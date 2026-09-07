@@ -54,7 +54,7 @@ function report(list) {
     console.log(pad(s.studentId, 11) + pad(s.section ?? '', 10) + s.name);
   }
   if (VECTORS) {
-    console.log('\ncurrent rolling codes (valid ~15s — live gate test vectors):');
+    console.log('\ncurrent rolling codes (valid ~30s — live gate test vectors):');
     console.log(pad('studentId', 11) + pad('counter', 14) + 'code (6-digit)');
     console.log('-'.repeat(50));
     const now = Date.now();

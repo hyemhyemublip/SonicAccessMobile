@@ -97,9 +97,9 @@ pointed at it, then feed it a WAV recorded from the app — occupancy moves. See
 ## How it works (one paragraph)
 
 `tokenGenerator` builds a 48-bit payload = `studentId(20) + rollingCode(20) +
-CRC-8(8)`, where `rollingCode = HOTP(secret, floor(now / 15s)) mod 1_000_000` — a
+CRC-8(8)`, where `rollingCode = HOTP(secret, floor(now / 30s)) mod 1_000_000` — a
 6-digit rolling decimal, same idea as Google Authenticator.
 `audioSynthesizer` modulates those bits with binary FSK (bit 0 → 18 kHz, bit 1 →
 19 kHz, 17 kHz preamble), renders a mono 16-bit WAV, and `GatePassScreen` plays
-it. The gate re-derives the expected `rollingCode` for the current 15-second
+it. The gate re-derives the expected `rollingCode` for the current 30-second
 window (± 1 window of clock drift) and compares. Full spec: `src/PROTOCOL.md`.

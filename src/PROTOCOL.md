@@ -41,7 +41,7 @@ the key input. See `CONSIDERATIONS.md` → "Occupancy / headcount tracking".
 | HMAC               | HMAC-SHA1                               |
 | Key                | the shared secret **as raw UTF-8 bytes**|
 | Counter            | `floor(unixMillis / TIME_STEP_MS)`      |
-| `TIME_STEP_MS`     | `15000` (15 s rolling window)           |
+| `TIME_STEP_MS`     | `30000` (30 s rolling window)           |
 | Gate drift window  | ± 1 step (accept previous/next window)  |
 
 `rollingCode = HOTP(secret, counter) mod 1 000 000`  (6-digit decimal, RFC 6238 style)
@@ -104,9 +104,9 @@ Total on-air time ≈ `(8 + 1 + 48) * 20 ms` = 1.14 s plus 80 ms silence.
 
 ## 5. Replay resistance
 
-A captured chirp is only replayable within the current 15 s window ± 1 step
-(≤ 45 s). The gate SHOULD additionally cache accepted `(studentId, counter)`
-pairs for ~60 s and reject a second use of the same pair.
+A captured chirp is only replayable within the current 30 s window ± 1 step
+(≤ 90 s). The gate SHOULD additionally cache accepted `(studentId, counter)`
+pairs for ~120 s and reject a second use of the same pair.
 
 ## 6. Status
 
