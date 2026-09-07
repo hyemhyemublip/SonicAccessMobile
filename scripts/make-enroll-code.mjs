@@ -5,9 +5,10 @@
  *   npm run enroll-code -- --all         every seeded student
  *   npm run enroll-code -- 512345 "S. Cruz" MYSECRETSTRING12345   ad-hoc
  *
- * Output: the raw JSON payload (paste into the app's "Enter the code manually"
- * field) and its base64 form (encode into a QR with any QR generator). Format
- * matches `src/services/enrollmentCode.ts`.
+ * The enrollment code is the **base64** string — paste it into the app's "Enter
+ * the code manually" field, or turn it into a QR and scan. (The decoded JSON is
+ * printed too, for reference; the parser accepts it as well.) Format matches
+ * `src/services/enrollmentCode.ts`.
  */
 
 import { readFileSync } from 'node:fs';
@@ -25,8 +26,9 @@ function emit(p) {
   const json = buildEnrollPayload(p);
   const b64 = Buffer.from(json).toString('base64');
   console.log(`\nstudent ${p.studentId}${p.name ? ` (${p.name})` : ''}`);
-  console.log('  JSON  :', json);
-  console.log('  base64:', b64);
+  console.log('  ENROLLMENT CODE (paste this / put in the QR):');
+  console.log('    ' + b64);
+  console.log('  (decoded, for reference: ' + json + ')');
 }
 
 // ad-hoc: <studentId> <name> <secret>  (3+ args, first is numeric)

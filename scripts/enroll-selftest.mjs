@@ -33,9 +33,19 @@ ok(parsed.studentId === payload.studentId, 'parse: studentId');
 ok(parsed.secret === payload.secret, 'parse: secret');
 ok(parsed.name === payload.name, 'parse: name');
 
-// base64-wrapped form
+// base64 form (the canonical "enrollment code" — paste-safe, goes in the QR)
 const b64 = Buffer.from(raw).toString('base64');
 ok(parseEnrollPayload(b64).secret === payload.secret, 'parse: base64 form');
+ok(
+  parseEnrollPayload(b64.slice(0, 20) + '\n ' + b64.slice(20)).secret === payload.secret,
+  'parse: base64 with inserted whitespace',
+);
+
+// JSON mangled by a phone keyboard (smart quotes) still parses
+ok(
+  parseEnrollPayload(raw.replace(/"/g, '“')).secret === payload.secret,
+  'parse: JSON with curly quotes',
+);
 
 // rejects
 const rejects = [

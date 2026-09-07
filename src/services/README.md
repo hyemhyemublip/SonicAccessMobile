@@ -36,12 +36,17 @@ bytes come from `expo-crypto` on device, WebCrypto under tests.
 
 ## `enrollmentCode.ts`
 
-Parses the registrar's enrollment payload —
-`{ t:"sonicaccess/v1", sid, sec, nm? }`, raw JSON or base64.
+The registrar's payload object is
+`{ t:"sonicaccess/v1", sid, sec, nm? }`. The **enrollment code** handed to a
+student is the **base64** of that JSON — it is the QR contents and what to paste
+into "Enter the code manually" (no quotes for a phone keyboard to mangle).
 
-- `parseEnrollPayload(raw)` → `{ studentId, secret, name? }`, throws with a
-  friendly message on anything malformed / out of range.
-- `buildEnrollPayload(p)` → the string form (registrar tool / tests).
+- `parseEnrollPayload(raw)` → `{ studentId, secret, name? }`. Accepts the base64
+  code or raw JSON; repairs smart quotes, zero-width chars, and stray whitespace
+  first; throws a friendly message on anything malformed / out of range.
+- `buildEnrollPayload(p)` → the JSON string (base64 it for the code).
+- `scripts/make-enroll-code.mjs` (`npm run enroll-code`) prints codes for seeded
+  students.
 
 Pilot note: the payload is unsigned. Production should make it a one-time,
 server-issued token so a leaked QR can't be reused.

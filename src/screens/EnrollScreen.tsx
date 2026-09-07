@@ -117,7 +117,8 @@ export default function EnrollScreen({ onEnrolled }: Props) {
         <Brand subtitle="Enroll device" />
         <Text style={text.title}>Enter enrollment code</Text>
         <Text style={[text.muted, { marginTop: 4, marginBottom: t.space.lg }]}>
-          Paste the code the registrar gave you.
+          Paste the code the registrar gave you — the long letters-and-numbers
+          string.
         </Text>
         <Card>
           <Field
@@ -127,7 +128,11 @@ export default function EnrollScreen({ onEnrolled }: Props) {
             multiline
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder={'{"t":"sonicaccess/v1", ...}'}
+            spellCheck={false}
+            autoComplete="off"
+            textContentType="none"
+            keyboardType="visible-password"
+            placeholder="eyJ0Ijoic29uaWNhY2Nlc3MvdjEiLCJ…"
           />
           <View style={{ marginTop: t.space.lg }}>
             <Button label="Continue" onPress={() => acceptPayload(manualText)} />

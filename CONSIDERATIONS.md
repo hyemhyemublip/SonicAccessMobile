@@ -97,10 +97,13 @@ Client: `src/services/vault.ts`, `authService.ts`, `enrollmentCode.ts`,
   scrypt is pure-JS, audited, memory-hard enough for a campus gate. Cost is
   tunable in `vault.ts`.)
 - **Enrollment**: `EnrollScreen` scans the registrar QR (`expo-camera`) or takes
-  a pasted code — payload `{ t:"sonicaccess/v1", sid, sec, nm? }` — then the
-  student sets a password (≥ 8 chars). `authService.enroll` wraps the secret and
-  stores `{ studentId, name }` + `VaultBlob` in `expo-secure-store`; the code
-  and plaintext secret are dropped.
+  a pasted code. The code is the **base64** of
+  `{ t:"sonicaccess/v1", sid, sec, nm? }` (base64 so a phone keyboard can't
+  turn `"` into curly quotes; the parser also repairs smart quotes / whitespace
+  if raw JSON is pasted). The student then sets a password (≥ 8 chars).
+  `authService.enroll` wraps the secret and stores `{ studentId, name }` +
+  `VaultBlob` in `expo-secure-store`; the code and plaintext secret are dropped.
+  Generate test codes with `npm run enroll-code`.
 - **Unlock**: `UnlockScreen` password → `authService.unlock` → decrypted secret
   handed to `App`, kept **in memory only**. `App` drops it on `AppState`
   background (re-lock). No timed key cache yet — every foreground session types

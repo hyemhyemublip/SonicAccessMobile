@@ -34,10 +34,11 @@ npm run enroll-code -- --all                  # every seeded student
 npm run enroll-code -- 512345 "S. Cruz" MYSECRETSTRING12345   # ad-hoc
 ```
 
-Prints the `{ t:"sonicaccess/v1", sid, sec, nm? }` payload as raw JSON (paste
-into **Enter the code manually**) and base64 (turn into a QR with any generator,
-then scan). Real provisioning would issue this from `/admin/students` as a
-signed one-time token.
+The **enrollment code is the base64 string** — paste it into **Enter the code
+manually**, or turn it into a QR and scan. base64 has no quotes for a phone
+keyboard to mangle. The decoded JSON is printed for reference and the parser
+also accepts it (repairing curly quotes / whitespace). Real provisioning would
+issue this from `/admin/students` as a signed one-time token.
 
 ## `gate-sim.mjs` — gate node simulator
 
