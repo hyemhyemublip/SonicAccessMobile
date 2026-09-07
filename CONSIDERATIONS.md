@@ -62,19 +62,53 @@ Two ESP32 receivers, identical firmware, configured per-unit with `direction`
   interval, node-side cache format.
 - `seed/students.json` is the fixture; `server` `npm run import-seed` loads it.
 
-## Enrollment / provisioning
+## Enrollment / provisioning + app login
 
-Enrollment is manual paste of `studentId` + `secret` in the app today.
+Manual paste of `studentId` + `secret` today. Target: student logs in with
+**student number + a short alphanumeric password**, never types the 32-char
+secret.
 
-- **Backend side BUILT** (`server/`): `POST /admin/students` (registrar issues a
-  student + secret), `.../rotate` (new secret version), `.../revoke`. The
-  registrar-facing tool/flow that calls these — and how the student then gets
-  the secret onto their phone (one-time QR into the enroll screen?) — is still
-  to design. Whatever it is, it needs connectivity **at enrollment only**;
-  daily use stays offline.
-- Secret handling on the device: `expo-secure-store` (OS keychain). Still to
-  decide: re-enroll / device-lost path (revoke on the backend → nodes drop it
-  on next pull → re-issue).
+**Backend side BUILT** (`server/`): `POST /admin/students` (registrar issues a
+student + secret), `.../rotate`, `.../revoke`. Needs connectivity **at
+enrollment only**; daily use stays offline.
+
+### The constraint
+
+You can't have all three of {no secret on the phone, works offline, short
+password} — pick two:
+
+| | secret on phone | offline | short password |
+| --- | --- | --- | --- |
+| **A. password unlocks an encrypted on-device secret** | yes (ciphertext) | ✅ | ✅ |
+| B. app fetches the code from the backend each time | no | ✗ (breaks the Phase 1 goal) | ✅ |
+| C. secret = KDF(password), nothing else stored | no | ✅ | weak — one recorded chirp + known student number lets a weak password be brute-forced offline |
+
+### DECIDED: model A
+
+- The 160-bit secret stays on the device but **encrypted at rest** with a key
+  from `Argon2id(password, per-install random salt, high cost)`.
+- **Enrollment** (one-time, online): app receives the secret via a QR / one-time
+  enrollment code from the registrar, immediately encrypts it with the
+  password-derived key, stores `{ studentId, salt, nonce, ciphertext }` in
+  `expo-secure-store`, discards the plaintext secret and the password.
+- **Emit**: prompt password **or** device biometric
+  (`expo-local-authentication`) → derive key → decrypt → HOTP → chirp → zero the
+  secret from memory. Cache the key in memory for N minutes / until backgrounded
+  so it isn't typed on every entry.
+- **Wrong password**: AEAD tag fails → "wrong password"; count attempts; wipe
+  after ~10.
+- **Forgot password / device lost**: re-enroll from the registrar (new secret
+  issued, old `revoke`d → nodes drop it on next `/nodes/secrets` pull).
+- **Backend impact: none for the password** — it is a client-only wrapping key,
+  the backend never sees it. The backend only needs to authorize the one-time
+  secret handover (QR token / enrollment code).
+- **Security note**: the password only matters if the phone is stolen *and* the
+  ciphertext is extracted from `expo-secure-store` (hard on modern iOS/Android).
+  Argon2id slows offline guessing; require 8+ alphanumeric. An attacker without
+  the phone gains nothing from the password. Proportionate for a campus gate.
+- Still open: password policy (length/charset), attempt-lockout count, key
+  cache TTL, whether biometric is required or optional, KDF cost calibration on
+  low-end devices.
 
 ## Occupancy / headcount tracking (proposal requirement)
 
@@ -237,6 +271,10 @@ A **pool of loaner fobs** at the gate desk, not one per student:
   node offline queue, delta-sync body.
 - **Node time:** NTP (absolute UTC). Timezone is irrelevant to the rolling-code
   math; only the correct absolute instant matters.
+- **App login:** student number + short alphanumeric password (model A). The
+  password locally decrypts an `Argon2id`-wrapped on-device secret; it never
+  reaches the backend. The 32-char secret is issued once via QR / enrollment
+  code and never typed by the student. See "Enrollment / provisioning + app
+  login".
 - **Hardware:** not on hand yet — near-term work is software only (see
-  `README.md` next-steps); FSK frequency tuning is deferred until pilot
-  hardware exists.
+  `ROADMAP.md`); FSK frequency tuning is deferred until pilot hardware exists.

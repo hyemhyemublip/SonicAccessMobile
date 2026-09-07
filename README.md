@@ -53,6 +53,7 @@ and loading the app on a phone (plus the web preview).
 | `App.tsx`         | Mounts `GatePassScreen`.                                   |
 | `RUNNING.md`      | Step-by-step run guide (Expo Go, dev server, on-device).   |
 | `BACKEND.md`      | Backend design overview (data model, flows, security).     |
+| `ROADMAP.md`      | Phase 1 status and what's next.                            |
 | `CONSIDERATIONS.md` | Open decisions before production: offline, clock drift, provisioning, security, audio tuning. |
 | `src/`            | All application code — see `src/README.md`.                |
 | `src/PROTOCOL.md` | The wire contract shared with the gate-node firmware.      |
