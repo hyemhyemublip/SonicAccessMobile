@@ -3,9 +3,14 @@
  * the app without binding a port.
  */
 
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import express from 'express';
 
 import { dbPath } from './db.mjs';
+
+const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 import { requireRole, tokenRolesConfigured } from './auth.mjs';
 import { HttpError } from './validate.mjs';
 import { admin } from './routes/admin.mjs';
@@ -18,35 +23,41 @@ export function createApp() {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '64kb' }));
 
-  app.use((req, _res, next) => {
-    req._t0 = Date.now();
-    next();
-  });
-  app.use((req, res, next) => {
-    res.on('finish', () => {
-      console.log(
-        JSON.stringify({
-          t: new Date().toISOString(),
-          m: req.method,
-          p: req.originalUrl,
-          s: res.statusCode,
-          ms: Date.now() - req._t0,
-        }),
-      );
+  if (String(process.env.LOG_REQUESTS ?? 'true').toLowerCase() !== 'false') {
+    app.use((req, res, next) => {
+      const t0 = Date.now();
+      res.on('finish', () => {
+        console.log(
+          JSON.stringify({
+            t: new Date().toISOString(),
+            m: req.method,
+            p: req.originalUrl,
+            s: res.statusCode,
+            ms: Date.now() - t0,
+          }),
+        );
+      });
+      next();
     });
-    next();
-  });
+  }
 
   app.get('/health', (_req, res) => {
     res.json({ ok: true, db: dbPath, rolesConfigured: tokenRolesConfigured() });
   });
 
   app.use('/admin', requireRole('admin'), admin);
-  app.use('/nodes', requireRole('node'), nodes);
+  app.use('/nodes', nodes); // per-route auth: /secrets = node, / = read|node|admin
   app.use('/ingest', requireRole('node'), ingest);
   app.use('/occupancy', occupancy); // per-route auth (supports PUBLIC_OCCUPANCY)
 
-  app.use((_req, res) => res.status(404).json({ error: 'not found' }));
+  app.use(express.static(PUBLIC_DIR)); // dashboard at /
+
+  app.use((req, res) => {
+    if (req.method === 'GET' && req.accepts('html')) {
+      return res.status(404).send('not found');
+    }
+    res.status(404).json({ error: 'not found' });
+  });
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {

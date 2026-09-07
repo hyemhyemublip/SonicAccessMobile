@@ -9,7 +9,9 @@
     "start": "node --experimental-sqlite --env-file=.env src/index.mjs",
     "dev": "node --experimental-sqlite --env-file=.env --watch src/index.mjs",
     "migrate": "node --experimental-sqlite --env-file=.env scripts/migrate.mjs",
-    "import-seed": "node --experimental-sqlite --env-file=.env scripts/import-seed.mjs"
+    "import-seed": "node --experimental-sqlite --env-file=.env scripts/import-seed.mjs",
+    "reset-occupancy": "node --experimental-sqlite --env-file=.env scripts/reset-occupancy.mjs",
+    "test": "node --experimental-sqlite --test 'test/**/*.test.mjs'"
   },
   "engines": {
     "node": ">=22.5"

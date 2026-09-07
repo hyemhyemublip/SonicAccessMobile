@@ -12,10 +12,13 @@ Responsibilities:
   map + the revoked list.
 - **Ingest** — nodes POST accepted verifications; the server appends an
   `access_event` and moves the live occupancy count.
-- **Occupancy** — live headcount read endpoint for dashboards.
+- **Occupancy** — live headcount read endpoints + operator corrections + a
+  nightly-reset script.
+- **Dashboard** — a static page at `/` (occupancy, today, gate-node liveness,
+  recent events; optional admin controls).
 
-Out of scope for this pass (planned): dashboard UI, nightly occupancy reset job,
-manual-correction endpoint.
+Not built yet: delta sync (`If-None-Match` is honored, but the map is still sent
+whole otherwise), node-side offline event queue.
 
 ## Run
 
@@ -25,11 +28,13 @@ npm install
 cp .env.example .env          # then set ADMIN_TOKEN / NODE_TOKEN / READ_TOKEN
 npm run migrate               # apply schema.sql (idempotent)
 npm run import-seed           # load ../seed/students.json into the DB
-npm start                     # http://localhost:4000
+npm start                     # http://localhost:4000  (dashboard at /)
+npm test                      # 13 API tests (node:test, throwaway DB)
 ```
 
 `npm run dev` restarts on file changes. SQLite file is `DB_PATH` (default
-`server/sonicaccess.db`); it and `.env` are gitignored.
+`server/sonicaccess.db`); it and `.env` are gitignored. `LOG_REQUESTS=false`
+silences the per-request JSON log.
 
 ## Auth
 
@@ -62,14 +67,19 @@ POST /admin/students/:id/rotate          { secret? }  -> new version (auto-gen i
 POST /admin/students/:id/revoke          status=revoked, all secrets deactivated
 ```
 
-### Nodes  (`NODE_TOKEN`)
+### Nodes
 ```
-GET /nodes/secrets  [?gateId=&direction=in|out]
+GET /nodes/secrets  [?gateId=&direction=in|out]     (NODE_TOKEN)
     -> { generatedAt, revision, students:[{studentId,secret}], revoked:[studentId] }
+    Response carries  ETag: "<revision>".  Send  If-None-Match: "<revision>"
+    to get 304 Not Modified and skip re-applying an unchanged map.
+GET /nodes                                          (read | node | admin)
+    -> { nodes:[{gateId,direction,label,lastSeenAt,stale}], staleAfterMs }
 ```
-`revision` is the newest student/secret change timestamp — a node can cache and
-skip re-applying an unchanged map. Passing `gateId`+`direction` stamps node
-liveness. Pull model: one URL, survives node reboot / brief LAN loss.
+`revision` is the newest student/secret change timestamp. Passing
+`gateId`+`direction` to `/nodes/secrets` stamps node liveness. Pull model: one
+URL, survives node reboot / brief LAN loss. `stale` = no pull/event in
+`staleAfterMs` (120 s).
 
 ### Ingest  (`NODE_TOKEN`)
 ```
@@ -85,23 +95,71 @@ is still recorded (`knownStudent:false`) — the log is the source of truth.
 
 ### Occupancy
 ```
-GET /occupancy          -> { count, updatedAt, today:{in,out,net}, lastEventAt }
-GET /occupancy/events   [?limit=50]  (max 500)  -> recent access_events
+GET  /occupancy               (read|node|admin, or open if PUBLIC_OCCUPANCY=true)
+     -> { count, updatedAt, today:{in,out,net}, lastEventAt }
+GET  /occupancy/events        [?limit=50]  (max 500)   (read|node|admin)
+GET  /occupancy/adjustments   [?limit=50]  (max 200)   (read|node|admin)
+POST /occupancy/adjust        (ADMIN)   { delta: non-zero int, reason? }
+     -> { previous, count, delta }              floored at 0
+POST /occupancy/reset         (ADMIN)   { to?: int>=0 (default 0), reason? }
+     -> { previous, count }
+```
+Every write is logged to `occupancy_adjustments` (kind `adjust` | `reset`, with
+`prev_count`, `new_count`, `reason`, `role`). `access_events` stays pure gate
+traffic.
+
+### Dashboard
+`GET /` serves `public/index.html` — a static page (no build) that polls
+`/occupancy`, `/nodes`, `/occupancy/events`. It prompts once for `READ_TOKEN`
+(kept in `localStorage`); an optional `ADMIN_TOKEN` field enables the
+adjust / reset controls. The count turns amber if any node is stale.
+
+## Nightly reset
+
+```bash
+npm run reset-occupancy          # -> 0
+npm run reset-occupancy -- 5     # -> 5
+```
+Talks to the DB directly (no running server), logs a `reset` row (role
+`system`). Schedule it from cron / a systemd timer, e.g. 02:00 daily:
+```
+0 2 * * *  cd /opt/sonicaccess/server && npm run reset-occupancy >> /var/log/sonicaccess-reset.log 2>&1
 ```
 
 ## Schema (`src/schema.sql`)
 
 `students` · `secrets` (versioned, one active per student) · `gate_nodes` ·
-`access_events` (append-only — UPDATE/DELETE blocked by trigger; corrections are
-new rows) · `occupancy` (single running counter).
+`access_events` (append-only — UPDATE/DELETE blocked by trigger) · `occupancy`
+(single running counter) · `occupancy_adjustments` (audit of every out-of-band
+change to the count).
 
-## Notes / follow-ups
+## Deploy (pilot)
 
-- `access_events.id` can skip a value when a duplicate POST hits
-  `ON CONFLICT DO NOTHING` — cosmetic (SQLite reserves the rowid first).
+- Runs on a small box on the campus LAN. `npm ci --omit=dev` then a process
+  manager keeps it up — systemd unit:
+  ```
+  [Service]
+  WorkingDirectory=/opt/sonicaccess/server
+  ExecStart=/usr/bin/node --experimental-sqlite --env-file=.env src/index.mjs
+  Restart=always
+  User=sonicaccess
+  ```
+  (or `pm2 start "npm start" --name sonicaccess`).
+- Firewall the port to the LAN only; the gate nodes and dashboard are all
+  on-campus. A reverse proxy (TLS) is optional for the dashboard.
+- **Back up the SQLite file.** It is the whole system of record. `sqlite3
+  sonicaccess.db ".backup 'backup.db'"` on a cron, off-box; or run Litestream
+  for continuous replication. WAL mode is on, so copy `*.db`, `*.db-wal`,
+  `*.db-shm` together (or use `.backup`).
+- Keep `.env` out of backups that leave the box, or encrypt them — it holds the
+  bearer tokens.
+
+## Notes
+
+- `access_events.id` / `occupancy_adjustments.id` can skip a value when a
+  duplicate POST hits `ON CONFLICT DO NOTHING` — cosmetic (SQLite reserves the
+  rowid first).
 - `today` counts use the **UTC** day boundary; campus-local reporting is a
   display concern for the dashboard.
-- Occupancy drifts over time (tailgating, missed exits, reboots) — the nightly
-  reset + manual-correction endpoint (deferred) will address this.
 - Ingest trusts the node token. Re-verification at the backend would need the
   node to also send the raw code + counter; deliberately not done.

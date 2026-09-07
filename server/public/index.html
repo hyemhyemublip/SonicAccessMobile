@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SonicAccess — occupancy</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; padding: 24px;
+  }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+  .count { font-size: 88px; font-weight: 700; line-height: 1; letter-spacing: 2px; }
+  .count.stale { color: #f59e0b; }
+  .today { color: #94a3b8; margin: 8px 0 24px; font-size: 14px; }
+  .today b { color: #e2e8f0; }
+  .grid { display: grid; gap: 20px; grid-template-columns: 1fr; max-width: 900px; }
+  @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .card { background: #1e293b; border-radius: 12px; padding: 16px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #334155; }
+  th { color: #94a3b8; font-weight: 600; }
+  .badge { padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .ok { background: #14532d; color: #86efac; }
+  .stalebadge { background: #7c2d12; color: #fdba74; }
+  .dir-in { color: #86efac; } .dir-out { color: #fca5a5; }
+  button, input { font: inherit; }
+  input { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 8px; padding: 8px 10px; }
+  button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.secondary { background: #334155; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .err { color: #fca5a5; font-size: 13px; margin-top: 8px; }
+  .foot { color: #64748b; font-size: 12px; margin-top: 24px; }
+  a { color: #93c5fd; }
+</style>
+</head>
+<body>
+  <h1>Campus occupancy</h1>
+  <div class="sub" id="sub">connecting…</div>
+
+  <div class="count" id="count">–</div>
+  <div class="today" id="today"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Gate nodes</h2>
+      <table><thead><tr><th>Gate</th><th>Dir</th><th>Last seen</th><th></th></tr></thead>
+      <tbody id="nodes"><tr><td colspan="4">–</td></tr></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Recent events</h2>
+      <table><thead><tr><th>Student</th><th>Gate</th><th>Dir</th><th>When</th></tr></thead>
+      <tbody id="events"><tr><td colspan="4">–</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:900px;margin-top:20px">
+    <h2>Operator controls (admin token)</h2>
+    <div class="controls">
+      <input id="adminTok" type="password" placeholder="ADMIN_TOKEN (optional)" size="28" />
+      <input id="adjDelta" type="number" placeholder="±n" style="width:80px" />
+      <button id="adjBtn" class="secondary">Adjust</button>
+      <button id="resetBtn" class="secondary">Reset to 0</button>
+    </div>
+    <div class="err" id="ctlErr"></div>
+  </div>
+
+  <div class="err" id="err"></div>
+  <div class="foot">
+    auto-refresh 5 s · <a href="#" id="logout">change token</a>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let READ = localStorage.getItem('sa_read') || '';
+
+function ask() {
+  const t = prompt('READ_TOKEN (from server/.env):', READ || '');
+  if (t === null) return;
+  READ = t.trim();
+  localStorage.setItem('sa_read', READ);
+}
+if (!READ) ask();
+
+async function api(path, opts = {}) {
+  const headers = Object.assign({ authorization: 'Bearer ' + READ }, opts.headers || {});
+  const r = await fetch(path, Object.assign({}, opts, { headers }));
+  if (r.status === 401) { $('err').textContent = 'token rejected — click "change token"'; throw new Error('401'); }
+  if (!r.ok) throw new Error(path + ' -> ' + r.status);
+  return r.json();
+}
+
+function rel(iso) {
+  if (!iso) return '—';
+  const s = Math.round((Date.now() - Date.parse(iso)) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.round(s / 60) + 'm ago';
+  return Math.round(s / 3600) + 'h ago';
+}
+
+async function tick() {
+  try {
+    const [occ, nodes, ev] = await Promise.all([
+      api('/occupancy'),
+      api('/nodes'),
+      api('/occupancy/events?limit=12'),
+    ]);
+    $('err').textContent = '';
+    const anyStale = nodes.nodes.some((n) => n.stale) || nodes.nodes.length === 0;
+    $('count').textContent = occ.count;
+    $('count').className = 'count' + (anyStale ? ' stale' : '');
+    $('today').innerHTML =
+      `today &nbsp; in <b>${occ.today.in}</b> &nbsp; out <b>${occ.today.out}</b> &nbsp; net <b>${occ.today.net}</b>` +
+      ` &nbsp;·&nbsp; last event ${rel(occ.lastEventAt)}`;
+    $('sub').textContent = 'updated ' + new Date().toLocaleTimeString();
+
+    $('nodes').innerHTML = nodes.nodes.length
+      ? nodes.nodes.map((n) =>
+          `<tr><td>${n.gateId}</td><td>${n.direction}</td><td>${rel(n.lastSeenAt)}</td>` +
+          `<td><span class="badge ${n.stale ? 'stalebadge' : 'ok'}">${n.stale ? 'stale' : 'ok'}</span></td></tr>`
+        ).join('')
+      : '<tr><td colspan="4">no nodes have checked in</td></tr>';
+
+    $('events').innerHTML = ev.events.length
+      ? ev.events.map((e) =>
+          `<tr><td>${e.studentId}</td><td>${e.gateId}</td>` +
+          `<td class="dir-${e.direction}">${e.direction}</td><td>${rel(e.eventTs)}</td></tr>`
+        ).join('')
+      : '<tr><td colspan="4">none</td></tr>';
+  } catch (e) {
+    if (String(e.message) !== '401') $('err').textContent = String(e.message);
+  }
+}
+
+async function adminPost(path, body) {
+  const tok = $('adminTok').value.trim();
+  if (!tok) { $('ctlErr').textContent = 'enter ADMIN_TOKEN first'; return; }
+  $('ctlErr').textContent = '';
+  try {
+    const r = await fetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (!r.ok) { $('ctlErr').textContent = j.error || ('HTTP ' + r.status); return; }
+    tick();
+  } catch (e) { $('ctlErr').textContent = String(e.message); }
+}
+
+$('adjBtn').onclick = () => {
+  const d = parseInt($('adjDelta').value, 10);
+  if (!d) { $('ctlErr').textContent = 'enter a non-zero delta'; return; }
+  adminPost('/occupancy/adjust', { delta: d, reason: 'dashboard' });
+};
+$('resetBtn').onclick = () => {
+  if (confirm('Reset occupancy to 0?')) adminPost('/occupancy/reset', { to: 0, reason: 'dashboard' });
+};
+$('logout').onclick = (e) => { e.preventDefault(); ask(); tick(); };
+
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

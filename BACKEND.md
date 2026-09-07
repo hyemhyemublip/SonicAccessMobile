@@ -37,6 +37,7 @@ three roles, fail closed (a role with no token set is refused).
 | `gate_nodes`    | `gate_id`, `direction` in\|out, `last_seen_at`                 |
 | `access_events` | **append-only** (triggers block UPDATE/DELETE). One row per accepted verify. `dedupe_key = gate_id\|student_id\|counter` unique |
 | `occupancy`     | single running counter, pinned `id = 1`                        |
+| `occupancy_adjustments` | audit of every out-of-band change to the count — operator adjust/reset and the nightly reset (`prev_count`, `new_count`, `reason`, `role`) |
 
 ## Flows
 
@@ -47,10 +48,10 @@ deactivates all secrets.
 
 **Node secret sync (pull)** — node polls `GET /nodes/secrets` on a timer →
 `{ students:[{studentId,secret}], revoked:[…], revision }`. Node caches locally
-and keeps verifying if the backend is unreachable. `revision` is the newest
-student/secret change timestamp, so a node can skip re-applying an unchanged
-map. Pull (not push) so a rebooted / briefly-disconnected node self-heals with
-no per-node addressing or retry queue.
+and keeps verifying if the backend is unreachable. The response carries
+`ETag: "<revision>"`; a node that sends `If-None-Match` gets `304` and skips
+re-applying an unchanged map. Pull (not push) so a rebooted / briefly-
+disconnected node self-heals with no per-node addressing or retry queue.
 
 **Entry / exit** — the node decodes the chirp and does the HOTP verify itself
 (see [`src/PROTOCOL.md`](src/PROTOCOL.md)); on accept it
@@ -60,8 +61,15 @@ backend appends the event and moves `occupancy` (`in` +1, `out` −1, floored at
 once and moves the count once. An event for an unknown `studentId` is still
 recorded (`knownStudent:false`); the log is the source of truth.
 
-**Dashboard** — `GET /occupancy` → `{ count, updatedAt, today:{in,out,net},
-lastEventAt }`. `GET /occupancy/events?limit=` returns recent rows.
+**Dashboard** — `GET /` serves a static page (no build) that polls
+`/occupancy`, `/nodes`, `/occupancy/events` and shows the live count, today's
+in/out/net, gate-node liveness, and recent events. An optional admin-token field
+enables the adjust / reset controls.
+
+**Corrections** — the count drifts (tailgating, missed exits, reboots).
+`POST /occupancy/adjust {delta}` and `POST /occupancy/reset {to}` (admin) fix it;
+both are logged to `occupancy_adjustments`. `npm run reset-occupancy` does the
+same against the DB directly — schedule it nightly from cron.
 
 ## Security model
 
@@ -73,6 +81,13 @@ lastEventAt }`. `GET /occupancy/events?limit=` returns recent rows.
 - Sample secrets in `seed/students.json` are dev-only; production issues fresh
   secrets via `/admin/students` and never commits them.
 
+## Tests
+
+`server/` has `npm test` — 13 `node:test` cases against a throwaway SQLite file:
+auth roles, student create/rotate/revoke, `/nodes/secrets` + ETag 304, ingest
+(+1 / −1 / dedupe / floor / unknown student), occupancy read + today counts,
+adjust/reset + validation, `/nodes` listing, malformed JSON, dashboard served.
+
 ## Testing without hardware
 
 `scripts/gate-sim.mjs` (`npm run gate-sim`) stands in for the ESP32: it pulls
@@ -81,12 +96,12 @@ runs the HOTP verify, applies a replay cache, and POSTs to `/ingest/events`.
 Run one instance per direction. Full flow: app records a chirp → `gate-sim`
 decodes it → backend occupancy moves.
 
-## Not built yet (deferred from this pass)
+## Not built yet
 
-- Dashboard UI (currently JSON endpoints only)
-- Nightly occupancy reset job
-- Manual-correction endpoint (append a correction event, never edit history)
-- Delta sync / `If-None-Match` on `/nodes/secrets`
+- Delta sync body (only `If-None-Match`/`304` is done; otherwise the full map is
+  sent)
 - Node-side offline event queue + flush semantics
+- Deploy automation (systemd unit / backup cron are documented in
+  `server/README.md`, not scripted)
 
 See [`CONSIDERATIONS.md`](CONSIDERATIONS.md) for the open decisions behind these.

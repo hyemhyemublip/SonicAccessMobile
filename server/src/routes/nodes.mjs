@@ -1,20 +1,24 @@
 /**
- * /nodes — the gate nodes pull from here. Requires NODE_TOKEN.
- *
- *   GET /nodes/secrets   full studentId -> secret map + the revoked list
+ * /nodes
+ *   GET /nodes/secrets   NODE_TOKEN   full studentId -> secret map + revoked list
+ *   GET /nodes           read|node|admin   registered gate nodes + liveness
  *
  * Pull, not push: one well-known URL, so a node that reboots or briefly loses
- * the LAN just re-fetches and caches. `revision` is the newest student/secret
- * change timestamp — a node can skip re-applying if it is unchanged. (Delta
- * sync and ETag/If-None-Match can be layered on later.)
+ * the LAN just re-fetches and caches. The response carries an ETag = the newest
+ * student/secret change timestamp (`revision`); a node that sends
+ * `If-None-Match: "<revision>"` gets `304 Not Modified` and can skip re-applying
+ * an unchanged map.
  */
 
 import { Router } from 'express';
 
 import { db, nowIso } from '../db.mjs';
+import { requireRole } from '../auth.mjs';
 import { oneOf, optStr } from '../validate.mjs';
 
 export const nodes = Router();
+
+const STALE_MS = 120_000; // no pull/event in this long -> flagged stale
 
 const q = {
   activeMap: db.prepare(`
@@ -40,20 +44,39 @@ const q = {
       direction = excluded.direction,
       last_seen_at = excluded.last_seen_at
   `),
+  listNodes: db.prepare(
+    'SELECT gate_id AS gateId, direction, label, last_seen_at AS lastSeenAt FROM gate_nodes ORDER BY gate_id',
+  ),
 };
 
-nodes.get('/secrets', (req, res) => {
-  // optional self-identification so the dashboard can show node liveness
+nodes.get('/secrets', requireRole('node'), (req, res) => {
   const gateId = optStr(req.query.gateId, 'gateId', { max: 64 });
   const direction = req.query.direction
     ? oneOf(req.query.direction, 'direction', ['in', 'out'])
     : null;
   if (gateId && direction) q.touchNode.run(gateId, direction, nowIso());
 
+  const revision = q.revision.get().revision;
+  const etag = `"${revision ?? 'none'}"`;
+  if (req.headers['if-none-match'] === etag) {
+    res.set('ETag', etag);
+    return res.status(304).end();
+  }
+
+  res.set('ETag', etag);
   res.json({
     generatedAt: nowIso(),
-    revision: q.revision.get().revision,
+    revision,
     students: q.activeMap.all(),
     revoked: q.revoked.all().map((r) => r.studentId),
   });
+});
+
+nodes.get('/', requireRole('read', 'node', 'admin'), (_req, res) => {
+  const now = Date.now();
+  const list = q.listNodes.all().map((n) => ({
+    ...n,
+    stale: !n.lastSeenAt || now - Date.parse(n.lastSeenAt) > STALE_MS,
+  }));
+  res.json({ nodes: list, staleAfterMs: STALE_MS });
 });

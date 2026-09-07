@@ -70,3 +70,16 @@ CREATE TABLE IF NOT EXISTS occupancy (
   updated_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 INSERT OR IGNORE INTO occupancy(id, count) VALUES (1, 0);
+
+-- Audit of every out-of-band change to the count: operator adjustments and the
+-- nightly reset. access_events stays purely gate traffic; corrections live here.
+CREATE TABLE IF NOT EXISTS occupancy_adjustments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind       TEXT    NOT NULL CHECK (kind IN ('adjust', 'reset')),
+  delta      INTEGER,                          -- kind = 'adjust'
+  prev_count INTEGER NOT NULL,
+  new_count  INTEGER NOT NULL,
+  reason     TEXT,
+  role       TEXT    NOT NULL,                 -- 'admin' | 'system'
+  created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);

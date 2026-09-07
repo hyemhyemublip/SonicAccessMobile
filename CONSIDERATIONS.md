@@ -91,9 +91,11 @@ running count of people currently inside, in the database, updated in real time.
   configured `direction = out`. On an accepted verify it POSTs an `out` event.
   Physical placement (which door is "in", which is "out") is an install-time
   concern; the phone stays dumb.
-- **Reconciliation — still open.** Counts drift (tailgating, missed exits,
-  reboots). Deferred: a nightly reset job + a manual-correction endpoint
-  (append a correction event, never edit history).
+- **Reconciliation — BUILT.** `POST /occupancy/adjust {delta}` and
+  `POST /occupancy/reset {to}` (admin), plus `npm run reset-occupancy` for
+  cron. Every change is logged to `occupancy_adjustments` (`prev_count`,
+  `new_count`, `reason`, `role`); `access_events` stays pure gate traffic. Still
+  open: the actual cron/timer wiring on the deploy box, and how often to reset.
 - **Offline — still open.** If a node loses its backend link it must queue
   events locally and flush on reconnect (with the `counter` dedupe key making
   replays safe), or the count goes stale. The count is eventually-consistent by
@@ -148,12 +150,14 @@ the count itself.
   −1). Phone never signals direction.
 - **Secret map on the node:** PULL from the backend (`GET /nodes/secrets`,
   bearer `NODE_TOKEN`), node caches locally for offline resilience. Built in
-  `server/`. (Delta sync / poll interval still to spec; push can be added later
-  if instant revocation is needed.)
-- **Backend:** Node + Express + SQLite (`node:sqlite`), lives in `server/` of
-  this repo. Core API built: admin/provisioning, node secret pull, event
-  ingest, occupancy read. Deferred: dashboard UI, nightly reset, manual
-  correction.
+  `server/`, with `ETag`/`If-None-Match` → `304` so an unchanged map is a cheap
+  no-op. (Poll interval still to spec; push can be added later if instant
+  revocation is needed.)
+- **Backend:** Node + Express + SQLite (`node:sqlite`), in `server/`. Built:
+  admin/provisioning, node secret pull (+304), event ingest, occupancy read,
+  operator adjust/reset (`occupancy_adjustments` audit), nightly-reset script,
+  static dashboard at `/`, 13 API tests, deploy notes. Deferred: cron wiring,
+  node offline queue, delta-sync body.
 - **Node time:** NTP (absolute UTC). Timezone is irrelevant to the rolling-code
   math; only the correct absolute instant matters.
 - **Hardware:** not on hand yet — near-term work is software only (see

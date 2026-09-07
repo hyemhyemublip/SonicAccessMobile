@@ -1,17 +1,22 @@
 /**
- * /occupancy — live headcount for dashboards.
+ * /occupancy — live headcount + operator corrections.
  *
- *   GET /occupancy          { count, updatedAt, today: { in, out, net }, lastEventAt }
- *   GET /occupancy/events   recent access events (?limit=, default 50, max 500)
+ *   GET  /occupancy               { count, updatedAt, today:{in,out,net}, lastEventAt }
+ *   GET  /occupancy/events        recent access events (?limit=, default 50, max 500)
+ *   GET  /occupancy/adjustments   recent operator corrections + resets
+ *   POST /occupancy/adjust        ADMIN  { delta: non-zero int, reason? }
+ *   POST /occupancy/reset         ADMIN  { to?: int>=0 (default 0), reason? }
  *
- * Auth: read | node | admin token. If PUBLIC_OCCUPANCY=true, GET /occupancy is
- * open (kiosk display) but /occupancy/events still needs a token.
+ * Reads: read | node | admin token (GET /occupancy is open if
+ * PUBLIC_OCCUPANCY=true). Writes: admin token only. Every write is logged to
+ * occupancy_adjustments — access_events stays purely gate traffic.
  */
 
 import { Router } from 'express';
 
-import { db } from '../db.mjs';
-import { rolesFor } from '../auth.mjs';
+import { db, tx, nowIso } from '../db.mjs';
+import { rolesFor, requireRole } from '../auth.mjs';
+import { HttpError } from '../validate.mjs';
 
 export const occupancy = Router();
 
@@ -30,7 +35,28 @@ const q = {
            event_ts AS eventTs, counter, received_at AS receivedAt
     FROM access_events ORDER BY id DESC LIMIT ?
   `),
+  setCount: db.prepare('UPDATE occupancy SET count = ?, updated_at = ? WHERE id = 1'),
+  logAdjust: db.prepare(`
+    INSERT INTO occupancy_adjustments (kind, delta, prev_count, new_count, reason, role, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `),
+  recentAdjust: db.prepare(`
+    SELECT id, kind, delta, prev_count AS prevCount, new_count AS newCount,
+           reason, role, created_at AS createdAt
+    FROM occupancy_adjustments ORDER BY id DESC LIMIT ?
+  `),
 };
+
+/** Apply an out-of-band change and log it. Returns { previous, count }. */
+function applyChange({ kind, delta = null, to = null, reason, role }) {
+  return tx(() => {
+    const prev = q.current.get().count;
+    const next = kind === 'reset' ? to : Math.max(0, prev + delta);
+    q.setCount.run(next, nowIso());
+    q.logAdjust.run(kind, delta, prev, next, reason ?? null, role, nowIso());
+    return { previous: prev, count: next };
+  });
+}
 
 /** Start of the current UTC day, ISO. (Campus-local reporting is a display concern.) */
 function startOfUtcDay() {
@@ -57,11 +83,40 @@ occupancy.get('/', (req, res) => {
   });
 });
 
+const clampLimit = (v, def = 50, max = 500) => {
+  const n = Number(v);
+  return Number.isInteger(n) ? Math.min(Math.max(n, 1), max) : def;
+};
+
 occupancy.get('/events', (req, res) => {
   if (!hasReadRole(req)) {
     return res.status(401).json({ error: 'invalid or missing bearer token' });
   }
-  const raw = Number(req.query.limit);
-  const limit = Number.isInteger(raw) ? Math.min(Math.max(raw, 1), 500) : 50;
+  const limit = clampLimit(req.query.limit);
   res.json({ limit, events: q.recent.all(limit) });
+});
+
+occupancy.get('/adjustments', (req, res) => {
+  if (!hasReadRole(req)) {
+    return res.status(401).json({ error: 'invalid or missing bearer token' });
+  }
+  const limit = clampLimit(req.query.limit, 50, 200);
+  res.json({ limit, adjustments: q.recentAdjust.all(limit) });
+});
+
+occupancy.post('/adjust', requireRole('admin'), (req, res) => {
+  const delta = req.body?.delta;
+  if (!Number.isInteger(delta) || delta === 0) {
+    throw new HttpError(400, 'delta must be a non-zero integer');
+  }
+  const reason = req.body?.reason == null ? null : String(req.body.reason).slice(0, 500);
+  res.json({ ...applyChange({ kind: 'adjust', delta, reason, role: 'admin' }), delta });
+});
+
+occupancy.post('/reset', requireRole('admin'), (req, res) => {
+  const raw = req.body?.to;
+  const to = raw == null ? 0 : raw;
+  if (!Number.isInteger(to) || to < 0) throw new HttpError(400, 'to must be an integer >= 0');
+  const reason = req.body?.reason == null ? null : String(req.body.reason).slice(0, 500);
+  res.json(applyChange({ kind: 'reset', to, reason, role: 'admin' }));
 });
