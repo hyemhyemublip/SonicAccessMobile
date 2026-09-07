@@ -34,18 +34,20 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
   banner when the device year is out of 2025–2100 or the clock is set before the
   build. (A network/ack-based drift check comes later with the node ack.)
 
-### C2. Login + provisioning — **model A** (see `CONSIDERATIONS.md`)
-- Student logs in with **student number + short alphanumeric password**. The
-  password decrypts an `Argon2id`-wrapped on-device secret; it never reaches the
-  backend.
-- One-time enrollment via **QR / enrollment code** from the registrar (uses the
-  built `/admin/students`); the 32-char secret is never typed.
-- Emit: password **or** biometric (`expo-local-authentication`) unlock, key
-  cached in memory for N minutes.
-- Wrong password → AEAD failure + attempt lockout; forgot password → re-enroll
-  (old secret `revoke`d).
-- Needs: `expo-camera` (scan), an Argon2id impl, `expo-local-authentication`
-  (optional biometric). No backend change for the password itself.
+### C2. Login + provisioning (model A) — DONE
+- `services/vault.ts` — secret sealed with `scrypt` + XChaCha20-Poly1305 under
+  the unlock password (`@noble/hashes` + `@noble/ciphers`).
+- `services/enrollmentCode.ts` — parse the registrar QR / pasted code
+  (`{ t:"sonicaccess/v1", sid, sec, nm? }`, raw or base64).
+- `authService.ts` — `enroll` / `getEnrollment` / `unlock` (attempts →
+  `WrongPasswordError` → self-wipe `LockedOut`) / `clearEnrollment`.
+- `screens/EnrollScreen` (QR via `expo-camera` + manual fallback + set
+  password), `UnlockScreen` (password + re-enroll), `GatePassScreen` now
+  props-only; `App.tsx` routes loading → enroll → locked → unlocked and re-locks
+  on background.
+- `npm run test:enroll` green.
+- **Deferred (C2b)**: biometric unlock (`expo-local-authentication` installed,
+  not wired), timed in-memory key cache, signed/one-time enrollment payload.
 
 ### C3. EAS build config
 - `eas.json` + build profiles; strip Android `INTERNET` permission in `app.json`

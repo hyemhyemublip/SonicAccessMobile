@@ -20,16 +20,47 @@ The security-critical path. Produces the rolling acoustic token.
 The secret is used as the **raw UTF-8 HMAC key** — the gate must key the exact
 same string. Parameters are documented in `../PROTOCOL.md`.
 
+## `vault.ts`
+
+Password-wrapped secret store. The 160-bit shared secret is kept **only as
+ciphertext**: sealed with XChaCha20-Poly1305 under a key from
+`scrypt(password, salt)`. The password is never persisted.
+
+- `wrapSecret(secret, password)` → `VaultBlob { v, salt, nonce, ct }` (all base64).
+- `unwrapSecret(blob, password)` → the secret, or throws `WrongPassword` on a
+  Poly1305 tag mismatch (wrong password or tampered blob).
+- `KDF_PARAMS` — scrypt cost (`N=2^14`), tunable here.
+
+`@noble/hashes` (scrypt) + `@noble/ciphers` (xchacha20poly1305), pure JS. Random
+bytes come from `expo-crypto` on device, WebCrypto under tests.
+
+## `enrollmentCode.ts`
+
+Parses the registrar's enrollment payload —
+`{ t:"sonicaccess/v1", sid, sec, nm? }`, raw JSON or base64.
+
+- `parseEnrollPayload(raw)` → `{ studentId, secret, name? }`, throws with a
+  friendly message on anything malformed / out of range.
+- `buildEnrollPayload(p)` → the string form (registrar tool / tests).
+
+Pilot note: the payload is unsigned. Production should make it a one-time,
+server-issued token so a leaked QR can't be reused.
+
 ## `authService.ts`
 
-On-device enrollment, stored in the OS keychain via `expo-secure-store`.
+Enrollment + unlock. Non-secret metadata (`studentId`, `name`) and the
+`VaultBlob` live in `expo-secure-store`; the raw secret is only ever in memory.
 
-- `enroll({ studentId, secret, name? })` — validates then persists.
-- `getCredential()` / `isEnrolled()` / `clearCredential()`.
-- `validateCredential(partial)` — returns an error string or `null`; reused by
-  the enrollment form.
+- `enroll({ studentId, secret, password, name? })` — wraps the secret with the
+  password (`vault`) and stores blob + metadata.
+- `getEnrollment()` → `{ studentId, name? } | null` · `isEnrolled()` ·
+  `clearEnrollment()`.
+- `unlock(password)` → the decrypted secret. Throws `WrongPasswordError`
+  (`.attemptsLeft`) or `LockedOut` after `MAX_UNLOCK_ATTEMPTS` wrong tries — at
+  which point the vault self-wipes and re-enrollment is required.
+- `validateStudentId` / `validatePassword` — form helpers.
 
-Keys: `sonic.studentId`, `sonic.secret`, `sonic.name`.
+Keys: `sonic.enrollment.meta`, `sonic.enrollment.vault`, `sonic.enrollment.fails`.
 
 ## `clock.ts`
 
@@ -49,5 +80,6 @@ gate's ~30–45 s acceptance window every emit is silently rejected. Bump
 ## Tests
 
 ```bash
-npm run selftest   # RFC 4226 vectors, CRC-8 check value, roll/drift/tamper cases
+npm run selftest      # RFC 4226 vectors, CRC-8 check value, roll/drift/tamper
+npm run test:enroll   # enrollment-code parsing + vault wrap/unwrap/wrong-pw/tamper
 ```

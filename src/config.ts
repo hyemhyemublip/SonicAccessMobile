@@ -15,3 +15,9 @@ export const SHOW_DEBUG: boolean = __DEV__;
  * not verify at the gate. Bump this to roughly "now" on every release.
  */
 export const BUILD_EPOCH_MS: number = Date.parse('2026-09-07T00:00:00Z');
+
+/** Minimum unlock-password length. (scrypt cost lives in `services/vault.ts`.) */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/** Wrong-password attempts before the vault self-wipes and re-enrollment is required. */
+export const MAX_UNLOCK_ATTEMPTS = 10;

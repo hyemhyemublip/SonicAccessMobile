@@ -38,19 +38,30 @@ are in [CONSIDERATIONS.md](CONSIDERATIONS.md).
 See **[RUNNING.md](RUNNING.md)** — installing Expo Go, starting the dev server,
 and loading the app on a phone (plus the web preview).
 
+## Login
+
+The student enrolls once by scanning a registrar QR (`{ studentId, secret }`)
+and setting a short **password**. The secret is sealed on-device with that
+password (`scrypt` + XChaCha20-Poly1305) and only the ciphertext is stored — the
+password is never persisted or sent anywhere. Each session: type the password to
+unlock, emit gate passes, auto-locks on background. Details:
+[CONSIDERATIONS.md](CONSIDERATIONS.md) → "Enrollment / provisioning + app login".
+
 ## Stack
 
 - Expo SDK 57, React Native 0.86, React 19, TypeScript
 - `expo-audio` — chirp playback
 - `expo-file-system` — writes the generated WAV to cache
-- `expo-secure-store` — holds the student's id + secret in the OS keychain
+- `expo-camera` — scans the enrollment QR
+- `expo-secure-store` — holds the sealed secret + non-secret metadata
+- `@noble/hashes` (scrypt) + `@noble/ciphers` (XChaCha20-Poly1305) — the vault
 - `js-sha1` — HMAC-SHA1 for the HOTP rolling code
 
 ## Layout
 
 | Path              | What                                                        |
 | ----------------- | ---------------------------------------------------------- |
-| `App.tsx`         | Mounts `GatePassScreen`.                                   |
+| `App.tsx`         | Router: loading → enroll → unlock → gate pass.             |
 | `RUNNING.md`      | Step-by-step run guide (Expo Go, dev server, on-device).   |
 | `BACKEND.md`      | Backend design overview (data model, flows, security).     |
 | `ROADMAP.md`      | Phase 1 status and what's next.                            |
@@ -71,6 +82,7 @@ npm test             # typecheck + token self-test + FSK round-trip + full e2e
 npm run typecheck    # tsc --noEmit
 npm run selftest     # crypto / token self-test (RFC 4226 vectors)
 npm run test:audio   # token -> WAV -> reference decoder -> verify (noise/offset)
+npm run test:enroll  # enrollment-code parsing + password-wrapped secret vault
 npm run test:e2e     # backend + client + decoder: chirp -> ingest -> occupancy
 npm run decode -- rec.wav [secret]   # decode a WAV with the reference decoder
 npm run gate-sim -- --gate-id g --direction in rec.wav   # simulate a gate node

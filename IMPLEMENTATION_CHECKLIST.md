@@ -108,6 +108,17 @@ Added because Phase 1 could not be built, run, or trusted without them.
 - [x] **`import-seed`**, `LOG_REQUESTS` toggle, 13-case API test suite, deploy
   notes (systemd unit, SQLite backup).
 
+### Client login / enrollment
+- [x] **Password login (model A)** — student number + password; the secret is
+  sealed on-device with `scrypt` + XChaCha20-Poly1305 and never leaves it in the
+  clear. `src/services/vault.ts`, `authService.ts`, `EnrollScreen`,
+  `UnlockScreen`; `App.tsx` routes and re-locks on background.
+- [x] **QR enrollment** — `expo-camera` scan of the registrar payload
+  (`enrollmentCode.ts`), manual-paste fallback.
+- [x] **Attempt lockout** — vault self-wipes after 10 wrong passwords.
+- [ ] biometric unlock, timed key cache, signed/one-time enrollment payload
+  (C2b).
+
 ### Client robustness
 - [x] **Device-clock sanity warning** `src/services/clock.ts` — the rolling code
   is time-based and there is no network reference offline.
@@ -121,8 +132,6 @@ Added because Phase 1 could not be built, run, or trusted without them.
   README per folder.
 
 ### Design notes captured for later (not built)
-- [ ] **Login = student number + short password** (model A: the password
-  locally decrypts an Argon2id-wrapped secret; never sent to the backend).
 - [ ] **Hardware loaner fob** for students without their phone.
 - [ ] **Multiple active credentials per student** (phone + fob).
 

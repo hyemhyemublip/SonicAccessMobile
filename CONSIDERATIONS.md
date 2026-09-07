@@ -86,32 +86,40 @@ password} — pick two:
 | B. app fetches the code from the backend each time | no | ✗ (breaks the Phase 1 goal) | ✅ |
 | C. secret = KDF(password), nothing else stored | no | ✅ | weak — one recorded chirp + known student number lets a weak password be brute-forced offline |
 
-### DECIDED: model A
+### DECIDED: model A — BUILT
 
-- The 160-bit secret stays on the device but **encrypted at rest** with a key
-  from `Argon2id(password, per-install random salt, high cost)`.
-- **Enrollment** (one-time, online): app receives the secret via a QR / one-time
-  enrollment code from the registrar, immediately encrypts it with the
-  password-derived key, stores `{ studentId, salt, nonce, ciphertext }` in
-  `expo-secure-store`, discards the plaintext secret and the password.
-- **Emit**: prompt password **or** device biometric
-  (`expo-local-authentication`) → derive key → decrypt → HOTP → chirp → zero the
-  secret from memory. Cache the key in memory for N minutes / until backgrounded
-  so it isn't typed on every entry.
-- **Wrong password**: AEAD tag fails → "wrong password"; count attempts; wipe
-  after ~10.
-- **Forgot password / device lost**: re-enroll from the registrar (new secret
-  issued, old `revoke`d → nodes drop it on next `/nodes/secrets` pull).
-- **Backend impact: none for the password** — it is a client-only wrapping key,
-  the backend never sees it. The backend only needs to authorize the one-time
-  secret handover (QR token / enrollment code).
-- **Security note**: the password only matters if the phone is stolen *and* the
-  ciphertext is extracted from `expo-secure-store` (hard on modern iOS/Android).
-  Argon2id slows offline guessing; require 8+ alphanumeric. An attacker without
-  the phone gains nothing from the password. Proportionate for a campus gate.
-- Still open: password policy (length/charset), attempt-lockout count, key
-  cache TTL, whether biometric is required or optional, KDF cost calibration on
-  low-end devices.
+Client: `src/services/vault.ts`, `authService.ts`, `enrollmentCode.ts`,
+`screens/EnrollScreen.tsx`, `UnlockScreen.tsx`; `App.tsx` is the router.
+
+- The 160-bit secret is stored **only as ciphertext** — sealed with
+  **XChaCha20-Poly1305** under a key from **`scrypt(password, salt, N=2^14)`**.
+  (scrypt, not Argon2id: no reliable Argon2 for Expo/Hermes; `@noble/hashes`
+  scrypt is pure-JS, audited, memory-hard enough for a campus gate. Cost is
+  tunable in `vault.ts`.)
+- **Enrollment**: `EnrollScreen` scans the registrar QR (`expo-camera`) or takes
+  a pasted code — payload `{ t:"sonicaccess/v1", sid, sec, nm? }` — then the
+  student sets a password (≥ 8 chars). `authService.enroll` wraps the secret and
+  stores `{ studentId, name }` + `VaultBlob` in `expo-secure-store`; the code
+  and plaintext secret are dropped.
+- **Unlock**: `UnlockScreen` password → `authService.unlock` → decrypted secret
+  handed to `App`, kept **in memory only**. `App` drops it on `AppState`
+  background (re-lock). No timed key cache yet — every foreground session types
+  the password once.
+- **Wrong password**: Poly1305 tag fails → `WrongPasswordError` with
+  `attemptsLeft`; after `MAX_UNLOCK_ATTEMPTS` (10) the vault self-wipes
+  (`LockedOut`) → re-enroll.
+- **Forgot password / device lost**: re-enroll from the registrar (new secret,
+  old `revoke`d → nodes drop it on next `/nodes/secrets` pull).
+- **Backend impact: none** — the password is a client-only wrapping key. The
+  backend still only issues/rotates/revokes the secret.
+- Verified: `npm run test:enroll` (parse + wrap/unwrap + wrong-pw + tamper +
+  fresh salt/nonce).
+
+Still open: **biometric unlock** (`expo-local-authentication` is installed but
+not wired — needs a biometric-protected copy of the derived key); a timed
+in-memory key cache so the password isn't retyped on every foreground; password
+strength meter / policy; a **signed / one-time** enrollment payload so a leaked
+QR can't be replayed; scrypt cost calibration on low-end devices.
 
 ## Occupancy / headcount tracking (proposal requirement)
 
@@ -274,10 +282,10 @@ A **pool of loaner fobs** at the gate desk, not one per student:
   node offline queue, delta-sync body.
 - **Node time:** NTP (absolute UTC). Timezone is irrelevant to the rolling-code
   math; only the correct absolute instant matters.
-- **App login:** student number + short alphanumeric password (model A). The
-  password locally decrypts an `Argon2id`-wrapped on-device secret; it never
-  reaches the backend. The 32-char secret is issued once via QR / enrollment
-  code and never typed by the student. See "Enrollment / provisioning + app
-  login".
+- **App login — BUILT (model A):** student number + short password. The password
+  locally decrypts a `scrypt` + XChaCha20-Poly1305 sealed on-device secret; it
+  never reaches the backend. The secret is issued once via QR / enrollment code
+  and never typed by the student. See "Enrollment / provisioning + app login".
+  Open: biometric unlock, timed key cache, signed enrollment payload.
 - **Hardware:** not on hand yet — near-term work is software only (see
   `ROADMAP.md`); FSK frequency tuning is deferred until pilot hardware exists.

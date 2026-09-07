@@ -1,16 +1,13 @@
 /**
- * SonicAccess — Phase 1 gate pass screen.
+ * SonicAccess — gate pass screen (authenticated).
  *
- * Two states:
- *  - not enrolled: manual enrollment form (student id + secret + name).
- *  - enrolled: an authenticator-style view that always shows the current
- *    6-digit rolling code (recomputed ~3x/second) with a countdown bar, plus an
- *    "Emit gate pass" button that modulates that code to an ultrasonic WAV and
- *    plays it through the speaker for the gate node to decode.
+ * Assumes an unlocked session: `secret` + `studentId` come in as props (held in
+ * memory by App, never persisted in the clear). Shows the current 6-digit
+ * rolling code (recomputed ~3x/second) with a countdown bar and an "Emit gate
+ * pass" button that modulates the code to an ultrasonic WAV and plays it.
  *
- * Shows a clock-drift warning (`utils/clock`) when the device time looks wrong,
- * since the rolling code depends on it. The `window <counter>` diagnostic line
- * is gated on `SHOW_DEBUG` (dev only).
+ * Shows a clock-drift warning when the device time looks wrong. The
+ * `window <counter>` diagnostic line is gated on `SHOW_DEBUG` (dev only).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -21,22 +18,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import {
-  createAudioPlayer,
-  setAudioModeAsync,
-  type AudioPlayer,
-} from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
-import {
-  clearCredential,
-  enroll,
-  getCredential,
-  validateCredential,
-  type Credential,
-} from '../services/authService';
+import { SHOW_DEBUG } from '../config';
+import { clockWarning } from '../services/clock';
 import {
   TIME_STEP_MS,
   formatCode,
@@ -44,46 +31,24 @@ import {
   verifyToken,
   type SonicToken,
 } from '../services/tokenGenerator';
-import {
-  cleanupChirps,
-  synthesizeChirp,
-} from '../utils/audioSynthesizer';
-import { clockWarning } from '../services/clock';
-import { SHOW_DEBUG } from '../config';
+import { cleanupChirps, synthesizeChirp } from '../utils/audioSynthesizer';
 
-type Phase = 'loading' | 'enroll' | 'ready';
+type Props = {
+  studentId: number;
+  name?: string;
+  secret: string;
+  onLock: () => void;
+};
 
-export default function GatePassScreen() {
-  const [phase, setPhase] = useState<Phase>('loading');
-  const [credential, setCredential] = useState<Credential | null>(null);
-
-  const [idInput, setIdInput] = useState('');
-  const [secretInput, setSecretInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
-
+export default function GatePassScreen({ studentId, name, secret, onLock }: Props) {
   const [emitting, setEmitting] = useState(false);
-  // `live` is the current-window token, recomputed on a timer like an
-  // authenticator app so the student always sees the code they will send.
   const [live, setLive] = useState<SonicToken | null>(null);
   const [emittedCounter, setEmittedCounter] = useState<number | null>(null);
-
   const playerRef = useRef<AudioPlayer | null>(null);
 
-  /* -- lifecycle ------------------------------------------------------------ */
-
   useEffect(() => {
-    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {
-      // non-fatal: playback still works with the ringer on
-    });
+    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
     cleanupChirps();
-
-    getCredential()
-      .then((c) => {
-        setCredential(c);
-        setPhase(c ? 'ready' : 'enroll');
-      })
-      .catch(() => setPhase('enroll'));
-
     return () => {
       playerRef.current?.remove();
       playerRef.current = null;
@@ -91,12 +56,11 @@ export default function GatePassScreen() {
     };
   }, []);
 
-  // recompute the current-window token ~3x/second while enrolled
+  // recompute the current-window token ~3x/second
   useEffect(() => {
-    if (phase !== 'ready' || !credential) return;
     const refresh = () => {
       try {
-        setLive(generateToken(credential.secret, credential.studentId));
+        setLive(generateToken(secret, studentId));
       } catch {
         setLive(null);
       }
@@ -104,63 +68,15 @@ export default function GatePassScreen() {
     refresh();
     const id = setInterval(refresh, 300);
     return () => clearInterval(id);
-  }, [phase, credential]);
-
-  /* -- actions ------------------------------------------------------------- */
-
-  const handleEnroll = useCallback(async () => {
-    const idTrimmed = idInput.trim();
-    const parsed: Partial<Credential> = {
-      studentId: /^\d+$/.test(idTrimmed) ? Number(idTrimmed) : NaN,
-      secret: secretInput,
-      name: nameInput,
-    };
-    const err = validateCredential(parsed);
-    if (err) {
-      Alert.alert('Check your details', err);
-      return;
-    }
-    try {
-      await enroll(parsed as Credential);
-      const c = await getCredential();
-      setCredential(c);
-      setPhase('ready');
-    } catch (e) {
-      Alert.alert('Enrollment failed', String(e instanceof Error ? e.message : e));
-    }
-  }, [idInput, secretInput, nameInput]);
-
-  const handleReenroll = useCallback(() => {
-    Alert.alert('Remove this enrollment?', 'You will need the ID and secret again.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          await clearCredential();
-          setCredential(null);
-          setLive(null);
-          setEmittedCounter(null);
-          setIdInput('');
-          setSecretInput('');
-          setNameInput('');
-          setPhase('enroll');
-        },
-      },
-    ]);
-  }, []);
+  }, [secret, studentId]);
 
   const handleEmit = useCallback(async () => {
-    if (!credential || emitting) return;
+    if (emitting) return;
     setEmitting(true);
     try {
-      const fresh = generateToken(credential.secret, credential.studentId);
-
-      // self-check: the payload we are about to broadcast must verify locally
-      const check = verifyToken(credential.secret, fresh.bits);
-      if (!check.ok) {
-        throw new Error(`internal token check failed (${check.reason})`);
-      }
+      const fresh = generateToken(secret, studentId);
+      const check = verifyToken(secret, fresh.bits);
+      if (!check.ok) throw new Error(`internal token check failed (${check.reason})`);
 
       const chirp = await synthesizeChirp(fresh.bits);
 
@@ -178,69 +94,12 @@ export default function GatePassScreen() {
       setLive(fresh);
       setEmittedCounter(fresh.counter);
     } catch (e) {
-      Alert.alert('Could not emit', String(e instanceof Error ? e.message : e));
+      Alert.alert('Could not emit', e instanceof Error ? e.message : String(e));
     } finally {
       setEmitting(false);
     }
-  }, [credential, emitting]);
+  }, [emitting, secret, studentId]);
 
-  /* -- render ------------------------------------------------------------- */
-
-  if (phase === 'loading') {
-    return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
-  if (phase === 'enroll') {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Enroll device</Text>
-        <Text style={styles.subtitle}>
-          Enter the ID and secret issued by the registrar.
-        </Text>
-
-        <Text style={styles.label}>Student ID</Text>
-        <TextInput
-          style={styles.input}
-          value={idInput}
-          onChangeText={setIdInput}
-          keyboardType="number-pad"
-          placeholder="e.g. 231868"
-          placeholderTextColor="#9aa5b1"
-        />
-
-        <Text style={styles.label}>Secret</Text>
-        <TextInput
-          style={styles.input}
-          value={secretInput}
-          onChangeText={setSecretInput}
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry
-          placeholder="shared secret"
-          placeholderTextColor="#9aa5b1"
-        />
-
-        <Text style={styles.label}>Name (optional)</Text>
-        <TextInput
-          style={styles.input}
-          value={nameInput}
-          onChangeText={setNameInput}
-          placeholder="shown on this screen only"
-          placeholderTextColor="#9aa5b1"
-        />
-
-        <Pressable style={styles.primaryBtn} onPress={handleEnroll}>
-          <Text style={styles.primaryBtnText}>Save enrollment</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  // phase === 'ready'
   const windowSecs = Math.round(TIME_STEP_MS / 1000);
   const msLeft = live ? Math.max(0, live.expiresAt - live.generatedAt) : 0;
   const secsLeft = Math.ceil(msLeft / 1000);
@@ -253,10 +112,17 @@ export default function GatePassScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Gate pass</Text>
-      <Text style={styles.subtitle}>
-        {credential?.name ? `${credential.name} · ` : ''}ID {credential?.studentId}
-      </Text>
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Gate pass</Text>
+          <Text style={styles.subtitle}>
+            {name ? `${name} · ` : ''}ID {studentId}
+          </Text>
+        </View>
+        <Pressable onPress={onLock} hitSlop={12}>
+          <Text style={styles.lockText}>Lock</Text>
+        </Pressable>
+      </View>
 
       {clockMsg ? (
         <View style={styles.warnBanner}>
@@ -310,10 +176,6 @@ export default function GatePassScreen() {
       {SHOW_DEBUG ? (
         <Text style={styles.debugLine}>window {live?.counter ?? '—'}</Text>
       ) : null}
-
-      <Pressable onPress={handleReenroll} style={styles.linkBtn}>
-        <Text style={styles.linkText}>Re-enroll this device</Text>
-      </Pressable>
     </View>
   );
 }
@@ -327,26 +189,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 72,
   },
-  center: { alignItems: 'center', justifyContent: 'center' },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 },
   title: { color: '#f8fafc', fontSize: 28, fontWeight: '700' },
-  subtitle: { color: '#94a3b8', fontSize: 15, marginTop: 4, marginBottom: 28 },
-  label: { color: '#cbd5e1', fontSize: 13, marginBottom: 6, marginTop: 14 },
-  input: {
-    backgroundColor: '#1e293b',
-    color: '#f8fafc',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  primaryBtn: {
-    backgroundColor: '#2563eb',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  subtitle: { color: '#94a3b8', fontSize: 15, marginTop: 4 },
+  lockText: { color: '#64748b', fontSize: 14, paddingTop: 8 },
+  warnBanner: { backgroundColor: '#7c2d12', borderRadius: 10, padding: 12, marginBottom: 16 },
+  warnText: { color: '#fdba74', fontSize: 13, lineHeight: 18 },
   codeCard: {
     backgroundColor: '#1e293b',
     borderRadius: 16,
@@ -354,12 +202,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
   },
-  codeLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.5,
-  },
+  codeLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '600', letterSpacing: 1.5 },
   codeValue: {
     color: '#f8fafc',
     fontSize: 56,
@@ -378,11 +221,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     overflow: 'hidden',
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: '#2563eb',
-  },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#2563eb' },
   progressFillExpiring: { backgroundColor: '#f59e0b' },
   codeMeta: { color: '#94a3b8', fontSize: 13, marginTop: 10 },
   emitBtn: {
@@ -395,21 +234,6 @@ const styles = StyleSheet.create({
   },
   emitBtnBusy: { opacity: 0.7 },
   emitBtnText: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  hint: {
-    color: '#94a3b8',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 14,
-    textAlign: 'center',
-  },
+  hint: { color: '#94a3b8', fontSize: 13, lineHeight: 18, marginTop: 14, textAlign: 'center' },
   debugLine: { color: '#475569', fontSize: 12, marginTop: 10, textAlign: 'center' },
-  warnBanner: {
-    backgroundColor: '#7c2d12',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  warnText: { color: '#fdba74', fontSize: 13, lineHeight: 18 },
-  linkBtn: { marginTop: 'auto', marginBottom: 32, alignItems: 'center' },
-  linkText: { color: '#64748b', fontSize: 14 },
 });
