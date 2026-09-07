@@ -4,6 +4,19 @@ Phase 1 = the ultrasonic student authenticator for touchless gate entry, plus
 the pieces needed to run and prove it. Design decisions and open questions live
 in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
 
+## Remaining
+
+The mobile app is **code-complete** for Phase 1. What's left:
+
+| # | Item | Status / blocker |
+| - | ---- | ---------------- |
+| 1 | **Build + test on a real phone** — `eas build --profile preview`/`development`, then verify: QR enrollment, password + **biometric** unlock, emit + chirp, **airplane-mode** still works. | Not started. Needs an Expo account + a physical Android/iOS device. The biometric, offline, and standalone paths are untested until this runs. |
+| 2 | **QCU app icon + splash** — still the Expo default art. | Not started. Needs a logo PNG, or a generated placeholder "SA" mark. |
+| 3 | **Signed / one-time enrollment payload** — so a leaked code can't be replayed. | Not started. Needs a backend signer → outside mobile-only scope. |
+| 4 | **E — gate node firmware** — port `decodeWav` + `verifyToken` to the ESP32; tune the FSK band on real hardware. | Blocked on hardware. Reference impl + `src/PROTOCOL.md` are ready. |
+
+Everything else below is done.
+
 ## Done
 
 - **Client core** — `tokenGenerator` (HOTP/RFC 4226 rolling 6-digit code, **30 s
