@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, SafeAreaView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
+import { SESSION_TTL_MS } from './src/config';
 import { getEnrollment, type Enrollment } from './src/services/authService';
 import EnrollScreen from './src/screens/EnrollScreen';
 import UnlockScreen from './src/screens/UnlockScreen';
@@ -30,11 +31,19 @@ export default function App() {
     boot();
   }, [boot]);
 
-  // drop the in-memory secret whenever the app leaves the foreground
+  // Re-lock after the app has been in the background longer than SESSION_TTL_MS.
+  // Foreground time never expires the session (authenticator-app behaviour).
+  const leftAt = useRef<number | null>(null);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') {
-        setRoute((r) => (r.k === 'unlocked' ? { k: 'locked', e: r.e } : r));
+      if (state === 'active') {
+        const away = leftAt.current;
+        leftAt.current = null;
+        if (away != null && Date.now() - away > SESSION_TTL_MS) {
+          setRoute((r) => (r.k === 'unlocked' ? { k: 'locked', e: r.e } : r));
+        }
+      } else if (leftAt.current == null) {
+        leftAt.current = Date.now();
       }
     });
     return () => sub.remove();

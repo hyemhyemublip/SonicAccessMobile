@@ -49,8 +49,14 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
   props-only; `App.tsx` routes loading → enroll → locked → unlocked and re-locks
   on background.
 - `npm run test:enroll` green.
-- **Deferred (C2b)**: biometric unlock (`expo-local-authentication` installed,
-  not wired), timed in-memory key cache, signed/one-time enrollment payload.
+### C2b. Login hardening — mostly DONE
+- **Biometric unlock** — opt-in toggle at enrollment; `UnlockScreen` auto-prompts
+  on mount + has a button. A copy of the secret sits behind
+  `expo-secure-store` `requireAuthentication`; falls back to the password on
+  cancel / unavailable. (Untested on a physical device.)
+- **Timed session** — `App` re-locks only after `SESSION_TTL_MS` (3 min) of
+  background, not on every app switch.
+- [ ] Signed / one-time enrollment payload — still open (needs a backend signer).
 
 ### C4. UI redesign (QCU palette) — DONE
 - `src/theme.ts` — Quezon City University palette (blue `#0B3C8C` / white / red

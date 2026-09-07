@@ -32,6 +32,12 @@
         {
           "cameraPermission": "SonicAccess uses the camera once, to scan the enrollment QR code from the registrar."
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "SonicAccess uses Face ID to unlock your gate pass."
+        }
       ]
     ]
   }

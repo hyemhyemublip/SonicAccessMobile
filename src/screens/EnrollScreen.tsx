@@ -4,12 +4,12 @@
  * password by `authService.enroll` and the code itself is discarded.
  */
 
-import { useCallback, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import { MIN_PASSWORD_LENGTH } from '../config';
-import { enroll, validatePassword } from '../services/authService';
+import { biometricSupported, enroll, validatePassword } from '../services/authService';
 import { parseEnrollPayload, type EnrollPayload } from '../services/enrollmentCode';
 import { Brand, Button, Card, Field, LinkButton, Screen } from '../components/ui';
 import { palette, t, text } from '../theme';
@@ -26,7 +26,13 @@ export default function EnrollScreen({ onEnrolled }: Props) {
   const [pw2, setPw2] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [bioAvail, setBioAvail] = useState(false);
+  const [bioOn, setBioOn] = useState(true);
   const scannedRef = useRef(false);
+
+  useEffect(() => {
+    biometricSupported().then(setBioAvail).catch(() => setBioAvail(false));
+  }, []);
 
   const acceptPayload = useCallback((raw: string) => {
     try {
@@ -61,6 +67,7 @@ export default function EnrollScreen({ onEnrolled }: Props) {
         secret: payload.secret,
         password: pw1,
         name: name.trim() || payload.name,
+        biometric: bioAvail && bioOn,
       });
       onEnrolled();
     } catch (e) {
@@ -68,7 +75,7 @@ export default function EnrollScreen({ onEnrolled }: Props) {
     } finally {
       setBusy(false);
     }
-  }, [payload, pw1, pw2, name, onEnrolled]);
+  }, [payload, pw1, pw2, name, bioAvail, bioOn, onEnrolled]);
 
   /* -- password step ------------------------------------------------------- */
   if (step === 'password' && payload) {
@@ -102,6 +109,19 @@ export default function EnrollScreen({ onEnrolled }: Props) {
             secureTextEntry
             autoCapitalize="none"
           />
+          {bioAvail ? (
+            <View style={s.bioRow}>
+              <Text style={[text.body, { flex: 1 }]}>
+                Also unlock with fingerprint / Face ID
+              </Text>
+              <Switch
+                value={bioOn}
+                onValueChange={setBioOn}
+                trackColor={{ true: palette.blue, false: palette.line }}
+                thumbColor={palette.white}
+              />
+            </View>
+          ) : null}
           <View style={{ marginTop: t.space.xl }}>
             <Button label="Create login" onPress={doEnroll} loading={busy} />
           </View>
@@ -190,6 +210,12 @@ export default function EnrollScreen({ onEnrolled }: Props) {
 }
 
 const s = StyleSheet.create({
+  bioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.space.md,
+    marginTop: t.space.lg,
+  },
   camFrame: {
     height: 300,
     borderRadius: t.radius.lg,

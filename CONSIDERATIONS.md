@@ -110,9 +110,13 @@ Client: `src/services/vault.ts`, `authService.ts`, `enrollmentCode.ts`,
   driven from the console's **Enrollment · Registrar** tab, or `npm run
   enroll-code` from the CLI.
 - **Unlock**: `UnlockScreen` password → `authService.unlock` → decrypted secret
-  handed to `App`, kept **in memory only**. `App` drops it on `AppState`
-  background (re-lock). No timed key cache yet — every foreground session types
-  the password once.
+  handed to `App`, kept **in memory only**. `App` re-locks once the app has been
+  backgrounded longer than `SESSION_TTL_MS` (3 min); quick app switches keep the
+  session.
+- **Biometric unlock** (opt-in at enrollment): a copy of the secret sits behind
+  `expo-secure-store` `requireAuthentication`; `UnlockScreen` auto-prompts on
+  mount and has a button. Password is always the fallback. Not yet tested on a
+  physical device.
 - **Wrong password**: Poly1305 tag fails → `WrongPasswordError` with
   `attemptsLeft`; after `MAX_UNLOCK_ATTEMPTS` (10) the vault self-wipes
   (`LockedOut`) → re-enroll.
@@ -123,9 +127,7 @@ Client: `src/services/vault.ts`, `authService.ts`, `enrollmentCode.ts`,
 - Verified: `npm run test:enroll` (parse + wrap/unwrap + wrong-pw + tamper +
   fresh salt/nonce).
 
-Still open: **biometric unlock** (`expo-local-authentication` is installed but
-not wired — needs a biometric-protected copy of the derived key); a timed
-in-memory key cache so the password isn't retyped on every foreground; password
+Still open: verify biometric on real iOS + Android hardware; password
 strength meter / policy; a **signed / one-time** enrollment payload so a leaked
 QR can't be replayed; scrypt cost calibration on low-end devices.
 

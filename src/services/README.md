@@ -56,16 +56,27 @@ server-issued token so a leaked QR can't be reused.
 Enrollment + unlock. Non-secret metadata (`studentId`, `name`) and the
 `VaultBlob` live in `expo-secure-store`; the raw secret is only ever in memory.
 
-- `enroll({ studentId, secret, password, name? })` — wraps the secret with the
-  password (`vault`) and stores blob + metadata.
+- `enroll({ studentId, secret, password, name?, biometric? })` — wraps the
+  secret with the password (`vault`) and stores blob + metadata. With
+  `biometric: true` it also keeps a copy of the secret behind
+  `requireAuthentication` (best-effort — silently skipped if no device
+  passcode/biometric).
 - `getEnrollment()` → `{ studentId, name? } | null` · `isEnrolled()` ·
   `clearEnrollment()`.
 - `unlock(password)` → the decrypted secret. Throws `WrongPasswordError`
-  (`.attemptsLeft`) or `LockedOut` after `MAX_UNLOCK_ATTEMPTS` wrong tries — at
-  which point the vault self-wipes and re-enrollment is required.
+  (`.attemptsLeft`) or `LockedOut` after `MAX_UNLOCK_ATTEMPTS` wrong tries — the
+  vault then self-wipes and re-enrollment is required.
+- `biometricSupported()` — Face ID / fingerprint hardware present + enrolled.
+  `biometricEnabled()` — did this enrollment opt in (cheap flag, no prompt).
+  `unlockBiometric()` → the secret via the OS prompt, or `BiometricUnavailable`
+  (not set up / cancelled) → caller falls back to the password.
 - `validateStudentId` / `validatePassword` — form helpers.
 
-Keys: `sonic.enrollment.meta`, `sonic.enrollment.vault`, `sonic.enrollment.fails`.
+Keys: `sonic.enrollment.{meta,vault,fails,bioSecret,bioOn}`.
+
+Session: `App` holds the unlocked secret in memory and re-locks once the app has
+been **backgrounded longer than `SESSION_TTL_MS`** (config, 3 min). Foreground
+time never expires it.
 
 ## `clock.ts`
 

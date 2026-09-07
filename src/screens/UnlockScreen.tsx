@@ -1,17 +1,21 @@
 /**
- * Unlock: the enrolled student types their password; on success the decrypted
- * secret is handed to the caller (held in memory only). After
- * `MAX_UNLOCK_ATTEMPTS` wrong tries the vault self-wipes -> re-enroll.
+ * Unlock: the enrolled student types their password (or uses Face ID /
+ * fingerprint if they enabled it). On success the decrypted secret is handed to
+ * the caller — held in memory only. After `MAX_UNLOCK_ATTEMPTS` wrong password
+ * tries the vault self-wipes -> re-enroll.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
+  BiometricUnavailable,
   LockedOut,
   WrongPasswordError,
+  biometricEnabled,
   clearEnrollment,
   unlock,
+  unlockBiometric,
   type Enrollment,
 } from '../services/authService';
 import { Banner, Brand, Button, Card, Field, LinkButton, Screen } from '../components/ui';
@@ -27,6 +31,40 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [bio, setBio] = useState(false);
+  const bioTried = useRef(false);
+
+  const runBiometric = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const secret = await unlockBiometric();
+      onUnlocked(secret);
+    } catch (e) {
+      if (!(e instanceof BiometricUnavailable)) {
+        setErr(e instanceof Error ? e.message : String(e));
+      }
+      // otherwise: user cancelled -> just fall back to the password field
+    } finally {
+      setBusy(false);
+    }
+  }, [onUnlocked]);
+
+  // offer biometric, and try it once automatically on first mount
+  useEffect(() => {
+    let alive = true;
+    biometricEnabled().then((on) => {
+      if (!alive) return;
+      setBio(on);
+      if (on && !bioTried.current) {
+        bioTried.current = true;
+        runBiometric();
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [runBiometric]);
 
   const doUnlock = useCallback(async () => {
     if (!pw || busy) return;
@@ -87,7 +125,6 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
           }}
           secureTextEntry
           autoCapitalize="none"
-          autoFocus
           onSubmitEditing={doUnlock}
           returnKeyType="go"
         />
@@ -99,6 +136,16 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
         <View style={{ marginTop: t.space.lg }}>
           <Button label="Unlock" onPress={doUnlock} loading={busy} disabled={!pw} />
         </View>
+        {bio ? (
+          <View style={{ marginTop: t.space.md }}>
+            <Button
+              label="Use fingerprint / Face ID"
+              variant="secondary"
+              onPress={runBiometric}
+              disabled={busy}
+            />
+          </View>
+        ) : null}
       </Card>
 
       <View style={s.footer}>

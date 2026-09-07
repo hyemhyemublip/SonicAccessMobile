@@ -126,8 +126,12 @@ Added because Phase 1 could not be built, run, or trusted without them.
   tab, or `npm run enroll-code` from the CLI. `POST /admin/students` now
   auto-generates the secret if omitted.
 - [x] **Attempt lockout** — vault self-wipes after 10 wrong passwords.
-- [ ] biometric unlock, timed key cache, signed/one-time enrollment payload
-  (C2b).
+- [x] **Biometric unlock** — opt-in at enrollment; Face ID / fingerprint returns
+  the secret via `expo-secure-store` `requireAuthentication`, password always a
+  fallback. (Not yet tested on a device.)
+- [x] **Timed session** — re-locks after `SESSION_TTL_MS` (3 min) of background,
+  not every app switch.
+- [ ] Signed / one-time enrollment payload (needs a backend signer).
 
 ### UI
 - [x] **QCU-themed redesign** — `src/theme.ts` palette (blue / white / red /
