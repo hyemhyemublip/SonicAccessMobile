@@ -54,6 +54,7 @@ and loading the app on a phone (plus the web preview).
 | `RUNNING.md`      | Step-by-step run guide (Expo Go, dev server, on-device).   |
 | `BACKEND.md`      | Backend design overview (data model, flows, security).     |
 | `ROADMAP.md`      | Phase 1 status and what's next.                            |
+| `IMPLEMENTATION_CHECKLIST.md` | Build vs proposal scope; what we added beyond it. |
 | `CONSIDERATIONS.md` | Open decisions before production: offline, clock drift, provisioning, security, audio tuning. |
 | `src/`            | All application code — see `src/README.md`.                |
 | `src/PROTOCOL.md` | The wire contract shared with the gate-node firmware.      |
