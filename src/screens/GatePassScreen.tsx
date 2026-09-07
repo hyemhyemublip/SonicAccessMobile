@@ -119,19 +119,16 @@ export default function GatePassScreen({ studentId, name, secret, onLock }: Prop
       if (bioBusy) return;
       setBioBusy(true);
       try {
-        if (next) {
-          await enableBiometric(secret);
-          setBioOn(true);
-        } else {
-          await disableBiometric();
-          setBioOn(false);
-        }
+        if (next) await enableBiometric(secret);
+        else await disableBiometric();
+        // reflect what actually persisted, not what we hoped
+        setBioOn(await biometricEnabled());
       } catch (e) {
-        setBioOn(!next);
+        setBioOn(await biometricEnabled().catch(() => false));
         Alert.alert(
           'Biometric unlock',
           e instanceof BiometricUnavailable
-            ? "This device can't store a fingerprint / Face ID–protected value. Make sure a screen lock is set up."
+            ? "Couldn't turn on fingerprint / Face ID unlock. Set a screen lock on the device, and use a real build — Expo Go can't store a biometric-protected value on Android."
             : e instanceof Error
               ? e.message
               : String(e),
@@ -207,7 +204,10 @@ export default function GatePassScreen({ studentId, name, secret, onLock }: Prop
 
       {bioAvail ? (
         <View style={s.bioRow}>
-          <Text style={[text.body, { flex: 1 }]}>Unlock with fingerprint / Face ID</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={text.body}>Unlock with fingerprint / Face ID</Text>
+            <Text style={s.bioState}>{bioOn ? 'On' : 'Off'}</Text>
+          </View>
           <Switch
             value={bioOn}
             onValueChange={toggleBiometric}
@@ -276,5 +276,6 @@ const s = StyleSheet.create({
     marginTop: t.space.xl,
     paddingHorizontal: t.space.xs,
   },
+  bioState: { color: palette.inkFaint, fontSize: 12.5, marginTop: 2, fontWeight: '700' },
   debug: { color: palette.inkFaint, fontSize: 12, marginTop: t.space.md, textAlign: 'center' },
 });

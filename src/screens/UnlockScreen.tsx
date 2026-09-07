@@ -13,13 +13,14 @@ import {
   LockedOut,
   WrongPasswordError,
   biometricEnabled,
+  biometricSupported,
   clearEnrollment,
   unlock,
   unlockBiometric,
   type Enrollment,
 } from '../services/authService';
 import { Banner, Brand, Button, Card, Field, LinkButton, Screen } from '../components/ui';
-import { t, text } from '../theme';
+import { palette, t, text } from '../theme';
 
 type Props = {
   enrollment: Enrollment;
@@ -32,6 +33,7 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [bio, setBio] = useState(false);
+  const [bioHardware, setBioHardware] = useState(false);
   const bioTried = useRef(false);
 
   const runBiometric = useCallback(async () => {
@@ -53,6 +55,7 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
   // offer biometric, and try it once automatically on first mount
   useEffect(() => {
     let alive = true;
+    biometricSupported().then((h) => alive && setBioHardware(h));
     biometricEnabled().then((on) => {
       if (!alive) return;
       setBio(on);
@@ -145,6 +148,11 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
               disabled={busy}
             />
           </View>
+        ) : bioHardware ? (
+          <Text style={s.note}>
+            Fingerprint / Face ID unlock isn't set up. Turn it on from the gate
+            screen after you unlock with your password.
+          </Text>
         ) : null}
       </Card>
 
@@ -157,5 +165,11 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
 
 const s = StyleSheet.create({
   top: { marginBottom: t.space.xl },
+  note: {
+    color: palette.inkFaint,
+    fontSize: 12.5,
+    lineHeight: 17,
+    marginTop: t.space.md,
+  },
   footer: { marginTop: 'auto' },
 });
