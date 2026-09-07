@@ -12,6 +12,7 @@ so they import the `.ts` sources directly — no build step, no extra deps.
 | `gate-sim.mjs`        | `npm run gate-sim` | Gate node simulator — the ESP32's job on a laptop. WAV → `decodeWav` → CRC → secret lookup (pulled from the backend) → `verifyToken` → replay cache → `POST /ingest/events`. |
 | `e2e-test.mjs`        | `npm run test:e2e` | Full pipeline, no hardware: boots the backend (ephemeral port + temp DB), provisions a student, then `generateToken → buildWaveform → encodeWav → decodeWav → verifyToken → POST /ingest/events` and asserts occupancy +1/−1, replay dedupe, floor-at-0, `/occupancy` + event log. Needs `--experimental-sqlite` (in the npm alias). |
 | `seed-students.mjs`   | `npm run seed`     | (Re)generates `seed/students.json` — the sample student roster. |
+| `make-enroll-code.mjs`| `npm run enroll-code` | Prints an enrollment code (JSON + base64) for a seeded student — paste the JSON into the app's "Enter the code manually" field, or make a QR from the base64. Stand-in for the registrar. |
 
 `npm test` runs typecheck + `selftest` + `test:audio` together.
 
@@ -24,6 +25,19 @@ npm run decode -- path/to/recording.wav <shared-secret> # + verifyToken (ACCEPT/
 
 Accepts 16-bit PCM mono WAV. Searches for the preamble (tolerates arbitrary
 leading silence), so a raw mic capture works, not just a clean synthesized file.
+
+## `make-enroll-code.mjs` — enrollment codes
+
+```bash
+npm run enroll-code -- 231800                 # one seeded student
+npm run enroll-code -- --all                  # every seeded student
+npm run enroll-code -- 512345 "S. Cruz" MYSECRETSTRING12345   # ad-hoc
+```
+
+Prints the `{ t:"sonicaccess/v1", sid, sec, nm? }` payload as raw JSON (paste
+into **Enter the code manually**) and base64 (turn into a QR with any generator,
+then scan). Real provisioning would issue this from `/admin/students` as a
+signed one-time token.
 
 ## `gate-sim.mjs` — gate node simulator
 

@@ -35,7 +35,8 @@
     "test": "npm run typecheck && npm run selftest && npm run test:audio && npm run test:enroll && npm run test:e2e",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "enroll-code": "node --experimental-strip-types scripts/make-enroll-code.mjs"
   },
   "private": true
 }
