@@ -7,6 +7,8 @@ All application code for the Phase 1 client.
 | `screens/`        | UI screens: enroll, unlock, gate pass.                         |
 | `services/`       | Non-UI logic: token derivation, secret vault, enrollment, clock. |
 | `utils/`          | Pure helpers with no app state: the FSK audio modulator.       |
+| `components/ui.tsx` | Shared UI kit — `Screen`, `Brand`, `Card`, `Button`, `Field`, `Banner`, `LinkButton`. |
+| `theme.ts`        | QCU palette (blue / white / red / gold) + spacing / radius / type tokens. |
 | `config.ts`       | App flags / build constants (`SHOW_DEBUG`, `BUILD_EPOCH_MS`, `MIN_PASSWORD_LENGTH`). |
 | `PROTOCOL.md`     | The acoustic-token wire contract. **Shared with the ESP32 firmware — treat every constant in it as frozen for deployed gates.** |
 
@@ -41,4 +43,6 @@ ESP32 gate node: FFT decode -> re-derive rollingCode -> open gate
   the unlocked session (held by `App`, dropped on background). Never log it,
   never persist it in the clear, never send it anywhere.
 - Keep `utils/` pure (no imports of `services/` or React). `services/` may use
-  `utils/` and `config`. `screens/` may use both.
+  `utils/` and `config`. `screens/` may use both, plus `components/ui` + `theme`.
+- Styling goes through `theme.ts` tokens and the `components/ui` kit — screens
+  should not hard-code palette hex values.

@@ -5,40 +5,75 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>SonicAccess — occupancy</title>
 <style>
-  :root { color-scheme: dark; }
+  /* Quezon City University palette: blue / white / red / gold */
+  :root {
+    color-scheme: light;
+    --blue: #0B3C8C; --blue-dark: #082C66; --blue-tint: #E7EEF9;
+    --gold: #F2B705; --gold-deep: #C8930A;
+    --red: #C8102E; --red-tint: #FBE7EA;
+    --paper: #F4F6FB; --ink: #141B2D; --mute: #5A6478; --faint: #8A93A6; --line: #DDE3EE;
+  }
   * { box-sizing: border-box; }
   body {
-    margin: 0; font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    background: #0f172a; color: #e2e8f0; padding: 24px;
+    margin: 0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--paper); color: var(--ink); padding: 0 0 40px;
   }
-  h1 { font-size: 18px; margin: 0 0 2px; }
-  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
-  .count { font-size: 88px; font-weight: 700; line-height: 1; letter-spacing: 2px; }
-  .count.stale { color: #f59e0b; }
-  .today { color: #94a3b8; margin: 8px 0 24px; font-size: 14px; }
-  .today b { color: #e2e8f0; }
-  .grid { display: grid; gap: 20px; grid-template-columns: 1fr; max-width: 900px; }
+  .bar {
+    background: var(--blue); color: #fff; padding: 14px 24px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .bar .mark { font-weight: 800; font-size: 18px; letter-spacing: .3px; }
+  .bar .mark span { color: var(--gold); }
+  .bar .tag { color: #C9D6EE; font-size: 12.5px; font-weight: 600; letter-spacing: .4px; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 2px; font-weight: 700; }
+  .sub { color: var(--mute); font-size: 13px; margin-bottom: 18px; }
+  .count {
+    font-size: 92px; font-weight: 800; line-height: 1; letter-spacing: 1px; color: var(--blue);
+  }
+  .count.stale { color: var(--red); }
+  .today { color: var(--mute); margin: 10px 0 26px; font-size: 14px; }
+  .today b { color: var(--ink); }
+  .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
   @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
-  .card { background: #1e293b; border-radius: 12px; padding: 16px; }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin: 0 0 10px; }
+  .card {
+    background: #fff; border-radius: 14px; padding: 18px;
+    border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(11,27,58,.06);
+  }
+  .card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--blue); margin: 0 0 12px; font-weight: 700;
+  }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #334155; }
-  th { color: #94a3b8; font-weight: 600; }
-  .badge { padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-  .ok { background: #14532d; color: #86efac; }
-  .stalebadge { background: #7c2d12; color: #fdba74; }
-  .dir-in { color: #86efac; } .dir-out { color: #fca5a5; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--faint); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .5px; }
+  tr:last-child td { border-bottom: 0; }
+  .badge { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .ok { background: var(--blue-tint); color: var(--blue-dark); }
+  .stalebadge { background: var(--red-tint); color: var(--red); }
+  .dir-in { color: var(--blue); font-weight: 700; } .dir-out { color: var(--red); font-weight: 700; }
   button, input { font: inherit; }
-  input { background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 8px; padding: 8px 10px; }
-  button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
-  button.secondary { background: #334155; }
-  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
-  .err { color: #fca5a5; font-size: 13px; margin-top: 8px; }
-  .foot { color: #64748b; font-size: 12px; margin-top: 24px; }
-  a { color: #93c5fd; }
+  input {
+    background: #fff; border: 1px solid var(--line); color: var(--ink);
+    border-radius: 8px; padding: 8px 10px;
+  }
+  button {
+    background: var(--blue); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 14px; cursor: pointer; font-weight: 700;
+  }
+  button.secondary { background: #fff; color: var(--blue); border: 1.5px solid var(--blue); }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .err { color: var(--red); font-size: 13px; margin-top: 8px; }
+  .foot { color: var(--faint); font-size: 12px; margin-top: 26px; }
+  a { color: var(--blue); }
 </style>
 </head>
 <body>
+  <div class="bar">
+    <span class="mark">Sonic<span>Access</span></span>
+    <span class="tag">Quezon City University</span>
+  </div>
+  <div class="wrap">
   <h1>Campus occupancy</h1>
   <div class="sub" id="sub">connecting…</div>
 
@@ -72,6 +107,7 @@
   <div class="err" id="err"></div>
   <div class="foot">
     auto-refresh 5 s · <a href="#" id="logout">change token</a>
+  </div>
   </div>
 
 <script>

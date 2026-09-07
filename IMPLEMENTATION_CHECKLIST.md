@@ -119,6 +119,12 @@ Added because Phase 1 could not be built, run, or trusted without them.
 - [ ] biometric unlock, timed key cache, signed/one-time enrollment payload
   (C2b).
 
+### UI
+- [x] **QCU-themed redesign** — `src/theme.ts` palette (blue / white / red /
+  gold) + `src/components/ui.tsx` kit; all screens + the `server/` dashboard
+  restyled. Proposal names no visual identity; this is the QCU one.
+- [ ] QCU app icon / splash (still the Expo default).
+
 ### Client robustness
 - [x] **Device-clock sanity warning** `src/services/clock.ts` — the rolling code
   is time-based and there is no network reference offline.

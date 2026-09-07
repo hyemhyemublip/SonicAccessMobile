@@ -5,15 +5,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
   LockedOut,
@@ -22,6 +14,8 @@ import {
   unlock,
   type Enrollment,
 } from '../services/authService';
+import { Banner, Brand, Button, Card, Field, LinkButton, Screen } from '../components/ui';
+import { t, text } from '../theme';
 
 type Props = {
   enrollment: Enrollment;
@@ -74,61 +68,47 @@ export default function UnlockScreen({ enrollment, onUnlocked, onReset }: Props)
   }, [onReset]);
 
   return (
-    <View style={s.c}>
-      <Text style={s.h1}>Unlock gate pass</Text>
-      <Text style={s.sub}>
-        {enrollment.name ? `${enrollment.name} · ` : ''}ID {enrollment.studentId}
-      </Text>
+    <Screen>
+      <View style={s.top}>
+        <Brand subtitle="Gate pass" />
+        <Text style={text.title}>Unlock</Text>
+        <Text style={[text.muted, { marginTop: 4 }]}>
+          {enrollment.name ? `${enrollment.name}  ·  ` : ''}ID {enrollment.studentId}
+        </Text>
+      </View>
 
-      <Text style={s.label}>Password</Text>
-      <TextInput
-        style={s.in}
-        value={pw}
-        onChangeText={(t) => {
-          setPw(t);
-          if (err) setErr(null);
-        }}
-        secureTextEntry
-        autoCapitalize="none"
-        autoFocus
-        onSubmitEditing={doUnlock}
-        returnKeyType="go"
-      />
-      {err ? <Text style={s.err}>{err}</Text> : null}
+      <Card>
+        <Field
+          label="Password"
+          value={pw}
+          onChangeText={(t2) => {
+            setPw(t2);
+            if (err) setErr(null);
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+          autoFocus
+          onSubmitEditing={doUnlock}
+          returnKeyType="go"
+        />
+        {err ? (
+          <View style={{ marginTop: t.space.md }}>
+            <Banner tone="error">{err}</Banner>
+          </View>
+        ) : null}
+        <View style={{ marginTop: t.space.lg }}>
+          <Button label="Unlock" onPress={doUnlock} loading={busy} disabled={!pw} />
+        </View>
+      </Card>
 
-      <Pressable style={s.btn} onPress={doUnlock} disabled={busy || !pw}>
-        {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnT}>Unlock</Text>}
-      </Pressable>
-
-      <Pressable style={s.link} onPress={doReset}>
-        <Text style={s.linkT}>Forgot password — re-enroll</Text>
-      </Pressable>
-    </View>
+      <View style={s.footer}>
+        <LinkButton label="Forgot password — re-enroll" onPress={doReset} />
+      </View>
+    </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  c: { flex: 1, backgroundColor: '#0f172a', paddingHorizontal: 24, paddingTop: 96 },
-  h1: { color: '#f8fafc', fontSize: 26, fontWeight: '700' },
-  sub: { color: '#94a3b8', fontSize: 15, marginTop: 4, marginBottom: 28 },
-  label: { color: '#cbd5e1', fontSize: 13, marginBottom: 6 },
-  in: {
-    backgroundColor: '#1e293b',
-    color: '#f8fafc',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  err: { color: '#fca5a5', fontSize: 13, marginTop: 10 },
-  btn: {
-    backgroundColor: '#2563eb',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  btnT: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  link: { alignItems: 'center', paddingVertical: 20, marginTop: 'auto', marginBottom: 24 },
-  linkT: { color: '#64748b', fontSize: 14 },
+  top: { marginBottom: t.space.xl },
+  footer: { marginTop: 'auto' },
 });

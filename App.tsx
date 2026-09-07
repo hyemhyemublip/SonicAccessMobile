@@ -6,6 +6,7 @@ import { getEnrollment, type Enrollment } from './src/services/authService';
 import EnrollScreen from './src/screens/EnrollScreen';
 import UnlockScreen from './src/screens/UnlockScreen';
 import GatePassScreen from './src/screens/GatePassScreen';
+import { palette } from './src/theme';
 
 type Route =
   | { k: 'loading' }
@@ -43,7 +44,7 @@ export default function App() {
   if (route.k === 'loading') {
     body = (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={palette.blue} />
       </View>
     );
   } else if (route.k === 'enroll') {
@@ -69,13 +70,13 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       {body}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f172a' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: palette.paper },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.paper },
 });

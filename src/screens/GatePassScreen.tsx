@@ -32,6 +32,8 @@ import {
   type SonicToken,
 } from '../services/tokenGenerator';
 import { cleanupChirps, synthesizeChirp } from '../utils/audioSynthesizer';
+import { Banner, Brand, Button, Card, Screen } from '../components/ui';
+import { palette, t, text } from '../theme';
 
 type Props = {
   studentId: number;
@@ -56,7 +58,6 @@ export default function GatePassScreen({ studentId, name, secret, onLock }: Prop
     };
   }, []);
 
-  // recompute the current-window token ~3x/second
   useEffect(() => {
     const refresh = () => {
       try {
@@ -103,137 +104,115 @@ export default function GatePassScreen({ studentId, name, secret, onLock }: Prop
   const windowSecs = Math.round(TIME_STEP_MS / 1000);
   const msLeft = live ? Math.max(0, live.expiresAt - live.generatedAt) : 0;
   const secsLeft = Math.ceil(msLeft / 1000);
-  const fracLeft = msLeft / TIME_STEP_MS;
-  const codeStr = live ? formatCode(live.rollingCode) : '------';
+  const fracLeft = Math.max(0, Math.min(1, msLeft / TIME_STEP_MS));
+  const codeStr = live ? formatCode(live.rollingCode) : '––––––';
   const codeGrouped = `${codeStr.slice(0, 3)} ${codeStr.slice(3)}`;
   const emittedThisWindow = live != null && emittedCounter === live.counter;
   const expiringSoon = secsLeft <= 4;
   const clockMsg = clockWarning();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Gate pass</Text>
-          <Text style={styles.subtitle}>
-            {name ? `${name} · ` : ''}ID {studentId}
-          </Text>
-        </View>
-        <Pressable onPress={onLock} hitSlop={12}>
-          <Text style={styles.lockText}>Lock</Text>
+    <Screen>
+      <View style={s.headerRow}>
+        <Brand subtitle="Gate pass" />
+        <Pressable onPress={onLock} hitSlop={12} style={s.lockBtn}>
+          <Text style={s.lockText}>Lock</Text>
         </Pressable>
       </View>
 
-      {clockMsg ? (
-        <View style={styles.warnBanner}>
-          <Text style={styles.warnText}>{clockMsg}</Text>
-        </View>
-      ) : null}
+      <Text style={s.who}>
+        {name ? `${name}  ·  ` : ''}ID {studentId}
+      </Text>
 
-      <View style={styles.codeCard}>
-        <Text style={styles.codeLabel}>YOUR CODE THIS WINDOW</Text>
+      {clockMsg ? <Banner tone="warn">{clockMsg}</Banner> : null}
+
+      <Card accent style={s.codeCard}>
+        <Text style={[text.label, { color: palette.blue }]}>YOUR CODE THIS WINDOW</Text>
         <Text
-          style={[styles.codeValue, expiringSoon && styles.codeValueExpiring]}
+          style={[s.code, expiringSoon && s.codeExpiring]}
           accessibilityLabel={`Code ${codeStr}`}
         >
           {codeGrouped}
         </Text>
 
-        <View style={styles.progressTrack}>
+        <View style={s.track}>
           <View
             style={[
-              styles.progressFill,
-              { width: `${Math.max(0, Math.min(1, fracLeft)) * 100}%` },
-              expiringSoon && styles.progressFillExpiring,
+              s.fill,
+              { width: `${fracLeft * 100}%` },
+              expiringSoon && s.fillExpiring,
             ]}
           />
         </View>
-        <Text style={styles.codeMeta}>
+        <Text style={s.meta}>
           new code in {secsLeft}s · rolls every {windowSecs}s
         </Text>
+      </Card>
+
+      <View style={s.emitWrap}>
+        <Button
+          label={emitting ? '' : emittedThisWindow ? 'Emit again' : 'Emit gate pass'}
+          onPress={handleEmit}
+          loading={emitting}
+        />
       </View>
 
-      <Pressable
-        style={[styles.emitBtn, emitting && styles.emitBtnBusy]}
-        onPress={handleEmit}
-        disabled={emitting}
-      >
-        {emitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.emitBtnText}>
-            {emittedThisWindow ? 'Emit again' : 'Emit gate pass'}
-          </Text>
-        )}
-      </Pressable>
-
-      <Text style={styles.hint}>
+      <Text style={s.hint}>
         {emittedThisWindow
-          ? '♪ Sent this window — hold the speaker toward the gate node.'
+          ? '♪  Sent this window — hold the speaker toward the gate node.'
           : 'Point the phone speaker at the gate node, then tap Emit.'}
       </Text>
 
-      {SHOW_DEBUG ? (
-        <Text style={styles.debugLine}>window {live?.counter ?? '—'}</Text>
-      ) : null}
-    </View>
+      {SHOW_DEBUG ? <Text style={s.debug}>window {live?.counter ?? '—'}</Text> : null}
+    </Screen>
   );
 }
 
 const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-    paddingHorizontal: 24,
-    paddingTop: 72,
+const s = StyleSheet.create({
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  lockBtn: {
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: t.radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: palette.white,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 },
-  title: { color: '#f8fafc', fontSize: 28, fontWeight: '700' },
-  subtitle: { color: '#94a3b8', fontSize: 15, marginTop: 4 },
-  lockText: { color: '#64748b', fontSize: 14, paddingTop: 8 },
-  warnBanner: { backgroundColor: '#7c2d12', borderRadius: 10, padding: 12, marginBottom: 16 },
-  warnText: { color: '#fdba74', fontSize: 13, lineHeight: 18 },
-  codeCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  codeLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '600', letterSpacing: 1.5 },
-  codeValue: {
-    color: '#f8fafc',
-    fontSize: 56,
-    lineHeight: 64,
-    fontWeight: '700',
+  lockText: { color: palette.inkMute, fontSize: 13, fontWeight: '700' },
+  who: { color: palette.inkMute, fontSize: 14, fontWeight: '600', marginBottom: t.space.xl },
+
+  codeCard: { alignItems: 'center', paddingVertical: t.space.xxl },
+  code: {
+    color: palette.blue,
+    fontSize: 58,
+    lineHeight: 66,
+    fontWeight: '800',
     fontFamily: MONO,
     letterSpacing: 4,
-    marginTop: 10,
+    marginTop: t.space.md,
   },
-  codeValueExpiring: { color: '#f59e0b' },
-  progressTrack: {
+  codeExpiring: { color: palette.red },
+  track: {
     width: '100%',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#334155',
-    marginTop: 20,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.blueTint,
+    marginTop: t.space.xl,
     overflow: 'hidden',
   },
-  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#2563eb' },
-  progressFillExpiring: { backgroundColor: '#f59e0b' },
-  codeMeta: { color: '#94a3b8', fontSize: 13, marginTop: 10 },
-  emitBtn: {
-    backgroundColor: '#2563eb',
-    borderRadius: 16,
-    paddingVertical: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
+  fill: { height: '100%', borderRadius: 4, backgroundColor: palette.gold },
+  fillExpiring: { backgroundColor: palette.red },
+  meta: { color: palette.inkMute, fontSize: 13, marginTop: t.space.md },
+
+  emitWrap: { marginTop: t.space.xl },
+  hint: {
+    color: palette.inkMute,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: t.space.lg,
+    textAlign: 'center',
   },
-  emitBtnBusy: { opacity: 0.7 },
-  emitBtnText: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  hint: { color: '#94a3b8', fontSize: 13, lineHeight: 18, marginTop: 14, textAlign: 'center' },
-  debugLine: { color: '#475569', fontSize: 12, marginTop: 10, textAlign: 'center' },
+  debug: { color: palette.inkFaint, fontSize: 12, marginTop: t.space.md, textAlign: 'center' },
 });

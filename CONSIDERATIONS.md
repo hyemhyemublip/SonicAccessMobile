@@ -257,10 +257,13 @@ A **pool of loaner fobs** at the gate desk, not one per student:
 
 ## UI / layout
 
-- Layout is functional, not final — a proper pass is planned. The 6-digit code
-  card is the anchor; keep it the visual priority.
-- Accessibility: code has an `accessibilityLabel`; check contrast and font
-  scaling once the redesign lands.
+- **Redesigned to the QCU palette** (blue / white / red / gold) — `src/theme.ts`
+  tokens + `src/components/ui.tsx` kit; all screens + the backend dashboard use
+  them. Light theme, blue brand, gold for the live code + progress, red for
+  expiry / errors.
+- Screens must style via the theme tokens / UI kit, not raw hex.
+- Still to do: replace the default Expo app icon + splash with QCU branding;
+  on-device pass for dynamic font scaling and fuller screen-reader labels.
 
 ---
 

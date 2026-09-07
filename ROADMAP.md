@@ -49,15 +49,22 @@ in [`CONSIDERATIONS.md`](CONSIDERATIONS.md).
 - **Deferred (C2b)**: biometric unlock (`expo-local-authentication` installed,
   not wired), timed in-memory key cache, signed/one-time enrollment payload.
 
+### C4. UI redesign (QCU palette) — DONE
+- `src/theme.ts` — Quezon City University palette (blue `#0B3C8C` / white / red
+  `#C8102E` / gold `#F2B705`) + spacing / radius / type tokens.
+- `src/components/ui.tsx` — `Screen`, `Brand`, `Card`, `Button`, `Field`,
+  `Banner`, `LinkButton`.
+- All three screens + `App.tsx` restyled (light theme, blue brand, gold code +
+  progress, red for expiry / errors). `server/public/index.html` dashboard
+  restyled to match.
+- Follow-up: swap the default Expo app icon / splash for QCU branding; on-device
+  polish pass (font scaling, screen-reader labels beyond the code).
+
 ### C3. EAS build config
 - `eas.json` + build profiles; strip Android `INTERNET` permission in `app.json`
   for provably-offline builds.
 - Verify the standalone build runs fully offline (enroll once online, then
   airplane mode).
-
-### C4. Layout redesign
-- Full visual pass, iterating on a real device. Keep the 6-digit code card as
-  the anchor. Accessibility: contrast, font scaling, screen-reader.
 
 ## Later: E — gate node firmware (needs hardware)
 
