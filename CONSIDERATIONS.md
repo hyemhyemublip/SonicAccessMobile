@@ -133,6 +133,83 @@ the count itself.
 - Very loud ambient noise at a busy gate may swamp an 18 kHz tone. Measure SNR
   at the real gate; consider error-correction bits if decode rate is poor.
 
+## Hardware fob (loaner) — future modification
+
+For students who leave their phone behind: a keychain fob that emits the same
+chirp. Feasible — nothing on the gate or backend has to change (a chirp is a
+chirp). Open questions from that discussion, answered:
+
+### How does the fob connect to the database?
+
+It doesn't — and neither does the phone. Runtime data only ever flows
+`fob → (sound) → gate node → (HTTP) → backend`. The fob is offline for life.
+The only fob↔system contact is at a **desk cradle** (USB / NFC / pogo pins),
+used for two things:
+
+- **Provisioning**: burn a secret + a fob id, set the RTC. The registrar tool
+  driving the cradle registers the credential by calling the existing
+  `POST /admin/students` (or a fob-specific admin route) — that write reaches
+  the DB, the fob never does.
+- **Resync**: bump the RTC (and top up the cell) whenever the fob is docked.
+
+### How does the fob generate the 6-digit number?
+
+Same as the app — the number is **not** downloaded from anywhere and the app
+does not invent it. Both devices *compute* it:
+
+```
+code = HOTP(secret, floor(unixMillis / 15000)) mod 1_000_000
+```
+
+Inputs: the fixed **secret** (issued once at provisioning, stored on the device)
+and a **clock**. The backend/gate recompute the same value because they hold the
+same secret and the same time. So the fob needs exactly: (a) the secret burned
+in, (b) an RTC, (c) `HOTP` + FSK code on button press. Its fob id goes in the
+payload so the gate knows whose code it is.
+
+- **Separate secret per device** (recommended): phone = secret A, fob = secret
+  B, both mapped to the student. Revoking one leaves the other working, and you
+  never copy the phone's keychain secret out. Needs the backend to allow more
+  than one active credential per student (drop the "one active secret per
+  student" unique index → `/nodes/secrets` returns a list per student and the
+  gate tries each), **or** give fobs their own id range.
+
+### Does it need the same frequency range as the phone?
+
+Yes — not because fob and phone talk to each other (they never do), but because
+the **gate node** decodes everything with one fixed FFT config. The fob must
+emit the same `f0` / `f1` / `fPreamble` / `symbolMs` as `DEFAULT_CHIRP` /
+`PROTOCOL.md §4`. Practical consequence: when the band is finally tuned to
+hardware, tune it for the **weakest emitter** (likely the tiny fob transducer)
+and let the phone follow — one shared config, still marked provisional until
+hardware exists.
+
+### Simplest shippable version
+
+A **pool of loaner fobs** at the gate desk, not one per student:
+
+- Reserve an id range (e.g. `900000–900999`); each fob is its own credential
+  row with its own secret.
+- Desk logs fob → student on hand-out ("student 231805 took fob #12"),
+  clears it on return.
+- Gate treats it as a normal credential — **zero protocol change**, small
+  backend change (id range + assignment log).
+- Cradle at the desk keeps every fob's RTC synced and cell charged.
+
+### Other fob notes
+
+- **Secret extraction:** enable MCU flash readout protection (nRF52 APPROTECT /
+  ESP32 flash encryption / STM32 RDP). Worst case = one cloned credential until
+  revoked — same blast radius as a leaked phone secret.
+- **Loss/theft:** revoke on the backend → nodes drop it on next `/nodes/secrets`
+  pull. Already built.
+- **Transducer:** piezo resonates well at ~18–20 kHz but is narrowband; FSK
+  needs `f0` and `f1` both radiated at usable level, so a small mylar speaker is
+  safer. This is the main hardware risk — measure SPL at both tones at the
+  gate-mic distance.
+- **BOM** ≈ $3–8/fob at small volume (MCU + DS3231 RTC + speaker + CR2032 + PCB
+  + case), plus the cradle and the desk process.
+
 ## UI / layout
 
 - Layout is functional, not final — a proper pass is planned. The 6-digit code
