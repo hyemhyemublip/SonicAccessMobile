@@ -21,11 +21,12 @@
     "start": "expo start",
     "selftest": "node --experimental-strip-types scripts/token-selftest.mjs",
     "test:audio": "node --experimental-strip-types scripts/roundtrip-test.mjs",
+    "test:e2e": "node --experimental-strip-types --experimental-sqlite scripts/e2e-test.mjs",
     "decode": "node --experimental-strip-types scripts/fsk-decoder.mjs",
     "gate-sim": "node --experimental-strip-types scripts/gate-sim.mjs",
     "seed": "node --experimental-strip-types scripts/seed-students.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "npm run typecheck && npm run selftest && npm run test:audio",
+    "test": "npm run typecheck && npm run selftest && npm run test:audio && npm run test:e2e",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"

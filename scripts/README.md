@@ -9,6 +9,7 @@ so they import the `.ts` sources directly — no build step, no extra deps.
 | `fsk-decoder.mjs`     | `npm run decode`   | Software reference decoder — WAV → preamble lock → per-symbol Goertzel → 48 bits → CRC → `verifyToken`. Exact mirror of `src/PROTOCOL.md`; the spec the ESP32 firmware must match. Importable (`decodeWav`, `parseWav`) or a CLI. |
 | `roundtrip-test.mjs`  | `npm run test:audio` | token → `buildWaveform` → `encodeWav` → `decodeWav` → verify, under a leading offset, additive noise, low amplitude, trailing garbage; plus silence-rejection and tamper→CRC cases. |
 | `gate-sim.mjs`        | `npm run gate-sim` | Gate node simulator — the ESP32's job on a laptop. WAV → `decodeWav` → CRC → secret lookup (pulled from the backend) → `verifyToken` → replay cache → `POST /ingest/events`. |
+| `e2e-test.mjs`        | `npm run test:e2e` | Full pipeline, no hardware: boots the backend (ephemeral port + temp DB), provisions a student, then `generateToken → buildWaveform → encodeWav → decodeWav → verifyToken → POST /ingest/events` and asserts occupancy +1/−1, replay dedupe, floor-at-0, `/occupancy` + event log. Needs `--experimental-sqlite` (in the npm alias). |
 | `seed-students.mjs`   | `npm run seed`     | (Re)generates `seed/students.json` — the sample student roster. |
 
 `npm test` runs typecheck + `selftest` + `test:audio` together.

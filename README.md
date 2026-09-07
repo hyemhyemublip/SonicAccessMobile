@@ -65,10 +65,11 @@ and loading the app on a phone (plus the web preview).
 
 ```bash
 npm start            # expo dev server (use a physical device — needs a speaker)
-npm test             # typecheck + token self-test + FSK round-trip test
+npm test             # typecheck + token self-test + FSK round-trip + full e2e
 npm run typecheck    # tsc --noEmit
 npm run selftest     # crypto / token self-test (RFC 4226 vectors)
 npm run test:audio   # token -> WAV -> reference decoder -> verify (noise/offset)
+npm run test:e2e     # backend + client + decoder: chirp -> ingest -> occupancy
 npm run decode -- rec.wav [secret]   # decode a WAV with the reference decoder
 npm run gate-sim -- --gate-id g --direction in rec.wav   # simulate a gate node
 npm run seed         # (re)generate seed/students.json

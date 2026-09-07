@@ -96,6 +96,13 @@ runs the HOTP verify, applies a replay cache, and POSTs to `/ingest/events`.
 Run one instance per direction. Full flow: app records a chirp → `gate-sim`
 decodes it → backend occupancy moves.
 
+`npm run test:e2e` (root) automates that whole path in one run — boots the
+backend on an ephemeral port with a temp DB, provisions a student, generates a
+real chirp WAV, decodes + verifies it, POSTs the event, and asserts occupancy
++1 / −1, replay dedupe, floor-at-0, and the `/occupancy` + event-log responses.
+It is the "every layer agrees" check across the modulator, the reference
+decoder, the wire format, and backend ingest.
+
 ## Not built yet
 
 - Delta sync body (only `If-None-Match`/`304` is done; otherwise the full map is
